@@ -415,6 +415,24 @@ def generate_html(rows, csv_path: Path, output_path: Path):
       background: radial-gradient(1200px 800px at 20% -10%, #1f3c3f, transparent), var(--bg);
       color: var(--text);
     }}
+    body.light-theme {{
+      --bg: #f5f5f5;
+      --panel: #ffffff;
+      --text: #1a1a1a;
+      --muted: #666666;
+      --accent: #f2b264;
+      --accent2: #6dd3b6;
+      background: radial-gradient(1200px 800px at 20% -10%, #e8f0ef, transparent), var(--bg);
+    }}
+    body.dark-theme {{
+      --bg: #000000;
+      --panel: #0a0a0a;
+      --text: #d0d0d0;
+      --muted: #888888;
+      --accent: #f2b264;
+      --accent2: #6dd3b6;
+      background: var(--bg);
+    }}
     header {{
       padding: 32px 24px;
       border-bottom: 1px solid #1f3c3f;
@@ -447,6 +465,56 @@ def generate_html(rows, csv_path: Path, output_path: Path):
     }}
     .lang-btn.active {{
       border-color: var(--accent);
+      color: var(--accent);
+    }}
+    footer {{
+      background: var(--panel);
+      border-top: 1px solid #1f3c3f;
+      padding: 24px;
+      margin-top: 40px;
+      text-align: center;
+    }}
+    .theme-switch {{
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }}
+    .theme-label {{
+      color: var(--muted);
+      font-size: 13px;
+      margin-right: 8px;
+    }}
+    .theme-btn {{
+      border: 2px solid #1f3c3f;
+      background: transparent;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0;
+    }}
+    .theme-btn::after {{
+      content: '\u25cf';
+      font-size: 9px;
+      color: var(--muted);
+      opacity: 0;
+      transition: all 0.3s ease;
+    }}
+    .theme-btn:hover {{
+      border-color: var(--muted);
+    }}
+    .theme-btn.active {{
+      border-color: var(--accent);
+    }}
+    .theme-btn.active::after {{
+      opacity: 1;
       color: var(--accent);
     }}
     .meta {{
@@ -530,8 +598,8 @@ def generate_html(rows, csv_path: Path, output_path: Path):
         <div class="meta"><span data-i18n="meta_generated"></span>: <span id="meta-generated"></span></div>
       </div>
       <div class=\"lang-switch\">
-        <button class=\"lang-btn\" data-lang=\"zh\">繁體中文</button>
         <button class=\"lang-btn\" data-lang=\"en\">English</button>
+        <button class=\"lang-btn\" data-lang=\"zh\">繁體中文</button>
       </div>
     </div>
   </header>
@@ -724,6 +792,15 @@ def generate_html(rows, csv_path: Path, output_path: Path):
     </div>
   </div>
 
+  <footer>
+    <div class=\"theme-switch\">
+      <span class=\"theme-label\">佈景主題:</span>
+      <button class=\"theme-btn\" data-theme=\"light\" title=\"Light Theme\"></button>
+      <button class=\"theme-btn\" data-theme=\"default\" title=\"Default/Dark Theme\"></button>
+      <button class=\"theme-btn\" data-theme=\"dark\" title=\"Pure Dark Theme\"></button>
+    </div>
+  </footer>
+
   <script>
     const payload = {json.dumps(payload)};
     const TEXTS = {json.dumps(TEXTS)};
@@ -826,6 +903,40 @@ def generate_html(rows, csv_path: Path, output_path: Path):
       hovermode: 'x unified'
     }});
 
+    function updateChartsTheme(fontColor) {{
+      const chartIds = ['chart-req', 'chart-lat', 'chart-xfer', 'chart-pctl', 'chart-hist', 'chart-delta'];
+      const layoutUpdate = {{
+        font: {{ color: fontColor }},
+        xaxis: {{ tickfont: {{ color: fontColor }}, titlefont: {{ color: fontColor }} }},
+        yaxis: {{ tickfont: {{ color: fontColor }}, titlefont: {{ color: fontColor }} }}
+      }};
+      chartIds.forEach(id => {{
+        const elem = document.getElementById(id);
+        if (elem && elem.data && elem.data.length > 0) {{
+          Plotly.relayout(id, layoutUpdate);
+        }}
+      }});
+    }}
+
+    function applyTheme(theme) {{
+      document.body.classList.remove('light-theme', 'dark-theme');
+      let fontColor = '#e7f4f2';
+      
+      if (theme === 'light') {{
+        document.body.classList.add('light-theme');
+        fontColor = '#1a1a1a';
+      }} else if (theme === 'dark') {{
+        document.body.classList.add('dark-theme');
+        fontColor = '#d0d0d0';
+      }}
+      
+      updateChartsTheme(fontColor);
+      window.localStorage.setItem('report_theme', theme);
+      document.querySelectorAll('.theme-btn').forEach((btn) => {{
+        btn.classList.toggle('active', btn.dataset.theme === theme);
+      }});
+    }}
+
     function applyLang(lang) {{
       const t = TEXTS[lang];
       document.documentElement.lang = t.lang;
@@ -872,6 +983,14 @@ def generate_html(rows, csv_path: Path, output_path: Path):
         btn.addEventListener('click', () => {{
           window.localStorage.setItem('report_lang', btn.dataset.lang);
           applyLang(btn.dataset.lang);
+        }});
+      }});
+      
+      const savedTheme = window.localStorage.getItem('report_theme') || 'default';
+      applyTheme(savedTheme);
+      document.querySelectorAll('.theme-btn').forEach((btn) => {{
+        btn.addEventListener('click', () => {{
+          applyTheme(btn.dataset.theme);
         }});
       }});
     }});
