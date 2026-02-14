@@ -1,0 +1,54 @@
+# Build and dependency directories
+vendor/
+node_modules/
+composer.lock
+
+# Results and reports
+results/
+reports/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Environment and configuration
+.env
+.env.local
+.env.*.local
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# System files
+.DS_Store
+.AppleDouble
+.LSOverride
+$RECYCLE.BIN/
+ehthumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+
+# Misc
+*.zip
+*.rar
+*.7z
