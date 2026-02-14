@@ -460,8 +460,16 @@ def generate_html(rows, csv_path: Path, output_path: Path):
     }}
     header {{
       padding: 32px 24px;
-      border-bottom: 1px solid #1f3c3f;
-      background: linear-gradient(120deg, rgba(18, 47, 50, 0.8), rgba(13, 27, 30, 0.8));
+      border-bottom: 1px solid rgba(31, 60, 63, 0.5);
+      background: var(--panel);
+    }}
+    body.light-theme header {{
+      background: linear-gradient(120deg, rgba(232, 240, 239, 0.8), var(--bg));
+      border-bottom: 1px solid #d0d0d0;
+    }}
+    body.dark-theme header {{
+      background: var(--bg);
+      border-bottom: 1px solid #1a1a1a;
     }}
     .header-row {{
       display: flex;
@@ -474,19 +482,26 @@ def generate_html(rows, csv_path: Path, output_path: Path):
       margin: 0 0 8px 0;
       font-size: 28px;
       letter-spacing: 0.5px;
+      color: var(--text);
     }}
     .lang-switch {{
       display: flex;
       gap: 8px;
     }}
     .lang-btn {{
-      border: 1px solid #1f3c3f;
+      border: 1px solid rgba(31, 60, 63, 0.3);
       background: transparent;
       color: var(--muted);
       padding: 6px 10px;
       border-radius: 999px;
       cursor: pointer;
       font-size: 12px;
+    }}
+    body.light-theme .lang-btn {{
+      border-color: #d0d0d0;
+    }}
+    body.dark-theme .lang-btn {{
+      border-color: #333333;
     }}
     .lang-btn.active {{
       border-color: var(--accent);
