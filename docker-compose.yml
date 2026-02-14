@@ -7,6 +7,8 @@ services:
       - ./app:/var/www/html
     ports:
       - "8081:80"
+    cpus: "1.0"
+    mem_limit: 512m
 
   nginx:
     build:
@@ -16,6 +18,18 @@ services:
       - ./app:/var/www/html
     ports:
       - "8082:80"
+    cpus: "1.0"
+    mem_limit: 512m
+
+  nginx-multi:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.nginx-multi
+    volumes:
+      - ./app:/var/www/html
+    ports:
+      - "8083:80"
+    # 不設置 cpus 限制，允許使用多個 CPU 核心
 
   benchmark:
     build:
@@ -24,11 +38,13 @@ services:
     depends_on:
       - xampp
       - nginx
+      - nginx-multi
     volumes:
       - ./results:/results
     environment:
       URL_XAMPP: http://xampp/
       URL_NGINX: http://nginx/
+      URL_NGINX_MULTI: http://nginx-multi/
       DURATION: 10s
       CONNECTIONS: "50"
       THREADS: "2"

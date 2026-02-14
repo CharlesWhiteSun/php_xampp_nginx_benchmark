@@ -1,4 +1,4 @@
-#!/bin/sh
+﻿#!/bin/sh
 set -eu
 
 DURATION=${DURATION:-10s}
@@ -13,6 +13,7 @@ ENDPOINTS=${ENDPOINTS:-"cpu.php json.php io.php"}
 
 URL_XAMPP=${URL_XAMPP:-http://xampp/}
 URL_NGINX=${URL_NGINX:-http://nginx/}
+URL_NGINX_MULTI=${URL_NGINX_MULTI:-http://nginx-multi/}
 
 RESULTS_DIR=${RESULTS_DIR:-/results}
 RUN_ID=$(date +%Y%m%d_%H%M%S)
@@ -95,11 +96,13 @@ first_path=$(endpoint_url "$first_endpoint")
 
 wait_for "xampp" "${URL_XAMPP%/}/$first_path"
 wait_for "nginx" "${URL_NGINX%/}/$first_path"
+wait_for "nginx-multi" "${URL_NGINX_MULTI%/}/$first_path"
 
 for endpoint in $ENDPOINTS; do
     path=$(endpoint_url "$endpoint")
     run_wrk "XAMPP (apache)" "xampp" "$endpoint" "${URL_XAMPP%/}/$path"
-    run_wrk "NGINX (single worker)" "nginx" "$endpoint" "${URL_NGINX%/}/$path"
+    run_wrk "NGINX (1 core, 1 process)" "nginx" "$endpoint" "${URL_NGINX%/}/$path"
+    run_wrk "NGINX (multi-core, dynamic)" "nginx_multi" "$endpoint" "${URL_NGINX_MULTI%/}/$path"
 done
 
 echo "" >> "$JSON_FILE"

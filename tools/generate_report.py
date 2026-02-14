@@ -21,18 +21,18 @@ TEXTS = {
         "formula_percentile": "Percentile latency: $P_{90}$ means 90% of requests complete in $\\le P_{90}$.",
         "formula_delta": "Throughput delta: $\\Delta\\% = \\frac{R_{xampp} - R_{nginx}}{R_{nginx}} \\times 100\\%$.",
         "chart_requests": "Requests/sec by Endpoint",
-        "desc_requests": "Shows throughput per endpoint. Taller bars mean higher requests per second. Compare XAMPP vs NGINX for each workload to see which serves more requests.",
+        "desc_requests": "Shows throughput per endpoint across three systems. Compare XAMPP (constrained), NGINX (1-core equal comparison), and NGINX-Multi (unlimited cores) to see throughput differences.",
         "chart_latency": "Latency (ms) by Endpoint",
-        "desc_latency": "Shows average response time. Lower bars are better. Compare workloads to spot which endpoint is slowest and how each server behaves.",
+        "desc_latency": "Shows average response time across all three systems. Lower bars are better. NGINX-Multi demonstrates multi-core potential; single-core systems are directly comparable.",
         "chart_transfer": "Transfer (KB/sec) by Endpoint",
         "desc_transfer": "Shows output bandwidth per endpoint. Higher bars indicate more data served per second, useful for payload-heavy endpoints.",
         "chart_pctl": "Latency Percentiles (ms)",
-        "desc_pctl": "Shows tail latency. Use P90 and P99 to understand worst-case behavior; lower values mean fewer slow requests.",
+        "desc_pctl": "Shows tail latency across three systems. Use P90 and P99 to understand worst-case behavior; lower values mean fewer slow requests.",
         "pctl_missing": "Percentile data is missing. Re-run the benchmark with latency percentiles enabled.",
         "chart_dist": "Requests/sec Distribution",
-        "desc_dist": "Shows the spread of throughput across endpoints. The violin width indicates density; the median line helps compare central tendency between servers.",
+        "desc_dist": "Shows the spread of throughput across endpoints and systems. The violin width indicates density; compare central tendency between servers.",
         "chart_delta": "Throughput Comparison",
-        "desc_delta": "Green line shows XAMPP throughput, red line shows NGINX throughput. Compare the two lines to see which server handles more requests per second on each endpoint.",
+        "desc_delta": "Three system comparison: XAMPP (orange), NGINX 1-core (teal), and NGINX Multi-core (cyan). Compare performance across all test endpoints.",
         "insights_title": "Insights",
         "interpretation_title": "Interpretation",
         "raw_title": "Raw Results",
@@ -76,18 +76,18 @@ TEXTS = {
         "formula_percentile": "延遲分位數：$P_{90}$ 表示 90% 的請求在 $\\le P_{90}$ 內完成。",
         "formula_delta": "吞吐差異：$\\Delta\\% = \\frac{R_{xampp} - R_{nginx}}{R_{nginx}} \\times 100\\%$。",
         "chart_requests": "每端點 Requests/sec",
-        "desc_requests": "顯示各端點的吞吐量，柱越高代表每秒請求越多；可比較 XAMPP 與 NGINX 的處理能力。",
+        "desc_requests": "顯示各端點的吞吐量。透過三個系統比較：XAMPP（受限）、NGINX（1核公平對比）、NGINX-Multi（無限核心）來看吞吐量差異。",
         "chart_latency": "每端點延遲 (ms)",
-        "desc_latency": "顯示平均回應時間，越低越好；可看出哪個端點或環境較慢。",
+        "desc_latency": "顯示平均回應時間，越低越好。NGINX-Multi 展示多核潛力；單核心系統可直接比較。",
         "chart_transfer": "每端點傳輸量 (KB/sec)",
         "desc_transfer": "顯示每秒傳輸量，回應較大的端點會更高。",
         "chart_pctl": "延遲分位數 (ms)",
-        "desc_pctl": "顯示尾端延遲；P90/P99 可用來觀察最慢請求的風險，越低越好。",
-        "pctl_missing": "缺少分位數資料，請以延遲分位數模式重新跑壓測。",
+        "desc_pctl": "顯示三個系統的尾端延遲；P90/P99 可觀察最慢請求的風險，越低越好。",
+        "pctl_missing": "缺少分位數資料，請重新跑壓測以啟用延遲分位數模式。",
         "chart_dist": "Requests/sec 分佈",
-        "desc_dist": "顯示吞吐量分佈，寬度代表密度；可比較兩者穩定性。",
+        "desc_dist": "顯示各系統吞吐量分佈，寬度代表密度；可比較三者穩定性。",
         "chart_delta": "吞吐量對比",
-        "desc_delta": "綠線表示 XAMPP 吞吐量，紅線表示 NGINX 吞吐量。比較兩條線，可看出各端點上哪個伺服器每秒處理更多請求。",
+        "desc_delta": "三系統對比：XAMPP（橘）、NGINX 1核（青綠）、NGINX 多核（淺藍）。比較各端點效能差異。",
         "insights_title": "重點整理",
         "interpretation_title": "解讀建議",
         "raw_title": "原始結果",
@@ -204,46 +204,58 @@ def to_plot_data(rows):
     labels = [e.replace(".php", "") for e in endpoints]
 
     charts = {
-        "requests_sec": {"labels": [], "xampp": [], "nginx": []},
-        "latency_ms": {"labels": [], "xampp": [], "nginx": []},
-        "transfer_kb_sec": {"labels": [], "xampp": [], "nginx": []},
+        "requests_sec": {"labels": [], "xampp": [], "nginx": [], "nginx_multi": []},
+        "latency_ms": {"labels": [], "xampp": [], "nginx": [], "nginx_multi": []},
+        "transfer_kb_sec": {"labels": [], "xampp": [], "nginx": [], "nginx_multi": []},
         "latency_pctl": {
             "labels": [],
             "xampp": {"p50": [], "p75": [], "p90": [], "p99": []},
             "nginx": {"p50": [], "p75": [], "p90": [], "p99": []},
+            "nginx_multi": {"p50": [], "p75": [], "p90": [], "p99": []},
         },
         "throughput_delta_pct": {"labels": [], "values": []},
     }
 
     for endpoint, label in zip(endpoints, labels):
-        x = next(r for r in by_endpoint[endpoint] if r["server"] == "xampp")
-        n = next(r for r in by_endpoint[endpoint] if r["server"] == "nginx")
+        x = next((r for r in by_endpoint[endpoint] if r["server"] == "xampp"), None)
+        n = next((r for r in by_endpoint[endpoint] if r["server"] == "nginx"), None)
+        nm = next((r for r in by_endpoint[endpoint] if r["server"] == "nginx_multi"), None)
 
         charts["requests_sec"]["labels"].append(label)
-        charts["requests_sec"]["xampp"].append(x["requests_sec"])
-        charts["requests_sec"]["nginx"].append(n["requests_sec"])
+        charts["requests_sec"]["xampp"].append(x["requests_sec"] if x else None)
+        charts["requests_sec"]["nginx"].append(n["requests_sec"] if n else None)
+        charts["requests_sec"]["nginx_multi"].append(nm["requests_sec"] if nm else None)
 
         charts["latency_ms"]["labels"].append(label)
-        charts["latency_ms"]["xampp"].append(x["latency_ms"])
-        charts["latency_ms"]["nginx"].append(n["latency_ms"])
+        charts["latency_ms"]["xampp"].append(x["latency_ms"] if x else None)
+        charts["latency_ms"]["nginx"].append(n["latency_ms"] if n else None)
+        charts["latency_ms"]["nginx_multi"].append(nm["latency_ms"] if nm else None)
 
         charts["transfer_kb_sec"]["labels"].append(label)
-        charts["transfer_kb_sec"]["xampp"].append(x["transfer_kb_sec"])
-        charts["transfer_kb_sec"]["nginx"].append(n["transfer_kb_sec"])
+        charts["transfer_kb_sec"]["xampp"].append(x["transfer_kb_sec"] if x else None)
+        charts["transfer_kb_sec"]["nginx"].append(n["transfer_kb_sec"] if n else None)
+        charts["transfer_kb_sec"]["nginx_multi"].append(nm["transfer_kb_sec"] if nm else None)
 
         charts["latency_pctl"]["labels"].append(label)
-        charts["latency_pctl"]["xampp"]["p50"].append(x["latency_p50_ms"])
-        charts["latency_pctl"]["xampp"]["p75"].append(x["latency_p75_ms"])
-        charts["latency_pctl"]["xampp"]["p90"].append(x["latency_p90_ms"])
-        charts["latency_pctl"]["xampp"]["p99"].append(x["latency_p99_ms"])
-        charts["latency_pctl"]["nginx"]["p50"].append(n["latency_p50_ms"])
-        charts["latency_pctl"]["nginx"]["p75"].append(n["latency_p75_ms"])
-        charts["latency_pctl"]["nginx"]["p90"].append(n["latency_p90_ms"])
-        charts["latency_pctl"]["nginx"]["p99"].append(n["latency_p99_ms"])
+        if x:
+            charts["latency_pctl"]["xampp"]["p50"].append(x["latency_p50_ms"])
+            charts["latency_pctl"]["xampp"]["p75"].append(x["latency_p75_ms"])
+            charts["latency_pctl"]["xampp"]["p90"].append(x["latency_p90_ms"])
+            charts["latency_pctl"]["xampp"]["p99"].append(x["latency_p99_ms"])
+        if n:
+            charts["latency_pctl"]["nginx"]["p50"].append(n["latency_p50_ms"])
+            charts["latency_pctl"]["nginx"]["p75"].append(n["latency_p75_ms"])
+            charts["latency_pctl"]["nginx"]["p90"].append(n["latency_p90_ms"])
+            charts["latency_pctl"]["nginx"]["p99"].append(n["latency_p99_ms"])
+        if nm:
+            charts["latency_pctl"]["nginx_multi"]["p50"].append(nm["latency_p50_ms"])
+            charts["latency_pctl"]["nginx_multi"]["p75"].append(nm["latency_p75_ms"])
+            charts["latency_pctl"]["nginx_multi"]["p90"].append(nm["latency_p90_ms"])
+            charts["latency_pctl"]["nginx_multi"]["p99"].append(nm["latency_p99_ms"])
 
         delta = None
-        if n["requests_sec"] > 0:
-            delta = (x["requests_sec"] - n["requests_sec"]) / n["requests_sec"] * 100.0
+        if n and n["requests_sec"] > 0:
+            delta = (x["requests_sec"] - n["requests_sec"]) / n["requests_sec"] * 100.0 if x else None
         charts["throughput_delta_pct"]["labels"].append(label)
         charts["throughput_delta_pct"]["values"].append(delta)
 
@@ -254,6 +266,7 @@ def histogram_data(rows, key):
     return {
         "xampp": [r[key] for r in rows if r["server"] == "xampp"],
         "nginx": [r[key] for r in rows if r["server"] == "nginx"],
+        "nginx_multi": [r[key] for r in rows if r["server"] == "nginx_multi"],
     }
 
 
@@ -264,18 +277,30 @@ def build_insights(rows, endpoints):
 
     insights = []
     for endpoint in endpoints:
-        x = next(r for r in by_endpoint[endpoint] if r["server"] == "xampp")
-        n = next(r for r in by_endpoint[endpoint] if r["server"] == "nginx")
+        x = next((r for r in by_endpoint[endpoint] if r["server"] == "xampp"), None)
+        n = next((r for r in by_endpoint[endpoint] if r["server"] == "nginx"), None)
+        nm = next((r for r in by_endpoint[endpoint] if r["server"] == "nginx_multi"), None)
 
-        req_winner = "xampp" if x["requests_sec"] >= n["requests_sec"] else "nginx"
-        lat_winner = "xampp" if x["latency_ms"] <= n["latency_ms"] else "nginx"
+        # Find throughput winner among available systems
+        req_values = {}
+        if x: req_values["xampp"] = x["requests_sec"]
+        if n: req_values["nginx"] = n["requests_sec"]
+        if nm: req_values["nginx_multi"] = nm["requests_sec"]
+        req_winner = max(req_values, key=req_values.get) if req_values else "N/A"
+
+        # Find latency winner among available systems
+        lat_values = {}
+        if x: lat_values["xampp"] = x["latency_ms"]
+        if n: lat_values["nginx"] = n["latency_ms"]
+        if nm: lat_values["nginx_multi"] = nm["latency_ms"]
+        lat_winner = min(lat_values, key=lat_values.get) if lat_values else "N/A"
 
         req_delta = 0.0
-        if n["requests_sec"] > 0:
+        if n and n["requests_sec"] > 0 and x:
             req_delta = (x["requests_sec"] - n["requests_sec"]) / n["requests_sec"] * 100.0
 
         lat_delta = 0.0
-        if n["latency_ms"] > 0:
+        if n and n["latency_ms"] > 0 and x:
             lat_delta = (x["latency_ms"] - n["latency_ms"]) / n["latency_ms"] * 100.0
 
         insights.append(
@@ -300,11 +325,23 @@ def build_interpretations(rows, endpoints, lang_key):
     notes = []
     for endpoint in endpoints:
         label = endpoint.replace(".php", "")
-        x = next(r for r in by_endpoint[endpoint] if r["server"] == "xampp")
-        n = next(r for r in by_endpoint[endpoint] if r["server"] == "nginx")
+        x = next((r for r in by_endpoint[endpoint] if r["server"] == "xampp"), None)
+        n = next((r for r in by_endpoint[endpoint] if r["server"] == "nginx"), None)
+        nm = next((r for r in by_endpoint[endpoint] if r["server"] == "nginx_multi"), None)
 
-        req_winner = "XAMPP" if x["requests_sec"] >= n["requests_sec"] else "NGINX"
-        lat_winner = "XAMPP" if x["latency_ms"] <= n["latency_ms"] else "NGINX"
+        # Find throughput winner
+        req_values = {}
+        if x: req_values["XAMPP"] = x["requests_sec"]
+        if n: req_values["NGINX (1-core)"] = n["requests_sec"]
+        if nm: req_values["NGINX (Multi-core)"] = nm["requests_sec"]
+        req_winner = max(req_values, key=req_values.get) if req_values else "N/A"
+
+        # Find latency winner
+        lat_values = {}
+        if x: lat_values["XAMPP"] = x["latency_ms"]
+        if n: lat_values["NGINX (1-core)"] = n["latency_ms"]
+        if nm: lat_values["NGINX (Multi-core)"] = nm["latency_ms"]
+        lat_winner = min(lat_values, key=lat_values.get) if lat_values else "N/A"
 
         parts = []
         parts.append(t["interp_compare"].format(req_winner=req_winner, lat_winner=lat_winner))
@@ -314,7 +351,11 @@ def build_interpretations(rows, endpoints, lang_key):
         else:
             parts.append(t["interp_consistent"].format(winner=req_winner))
 
-        p99_values = [v for v in [x["latency_p99_ms"], n["latency_p99_ms"]] if v is not None]
+        p99_values = []
+        if x and x["latency_p99_ms"] is not None: p99_values.append(x["latency_p99_ms"])
+        if n and n["latency_p99_ms"] is not None: p99_values.append(n["latency_p99_ms"])
+        if nm and nm["latency_p99_ms"] is not None: p99_values.append(nm["latency_p99_ms"])
+        
         if p99_values:
             p99_max = max(p99_values)
             if p99_max >= 1000.0:
@@ -770,7 +811,7 @@ def generate_html(rows, csv_path: Path, output_path: Path):
         </div>
 
         <div>
-          <h3 style=\"margin: 0 0 12px 0; font-size: 16px; color: #6dd3b6;\">NGINX</h3>
+          <h3 style=\"margin: 0 0 12px 0; font-size: 16px; color: #6dd3b6;\">NGINX (1-core)</h3>
           <table>
             <thead>
               <tr>
@@ -785,6 +826,26 @@ def generate_html(rows, csv_path: Path, output_path: Path):
             </thead>
             <tbody>
               {"".join([f"<tr><td>{r['endpoint'].replace('.php', '')}</td><td>{r['requests_sec']:.2f}</td><td>{r['latency_avg']}</td><td>{r['latency_p50']}</td><td>{r['latency_p90']}</td><td>{r['latency_p99']}</td><td>{r['transfer_sec']}</td></tr>" for r in rows if r['server'] == 'nginx'])}
+            </tbody>
+          </table>
+        </div>
+
+        <div style=\"margin-top: 24px;\">
+          <h3 style=\"margin: 0 0 12px 0; font-size: 16px; color: #64b5f6;\">NGINX (Multi-core)</h3>
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n=\"th_endpoint\"></th>
+                <th data-i18n=\"th_req\"></th>
+                <th data-i18n=\"th_latency\"></th>
+                <th data-i18n=\"th_p50\"></th>
+                <th data-i18n=\"th_p90\"></th>
+                <th data-i18n=\"th_p99\"></th>
+                <th data-i18n=\"th_transfer\"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {"".join([f"<tr><td>{r['endpoint'].replace('.php', '')}</td><td>{r['requests_sec']:.2f}</td><td>{r['latency_avg']}</td><td>{r['latency_p50']}</td><td>{r['latency_p90']}</td><td>{r['latency_p99']}</td><td>{r['transfer_sec']}</td></tr>" for r in rows if r['server'] == 'nginx_multi'])}
             </tbody>
           </table>
         </div>
@@ -814,30 +875,36 @@ def generate_html(rows, csv_path: Path, output_path: Path):
     }};
 
     const reqData = [
-      {{ type: 'bar', name: 'xampp', x: payload.charts.requests_sec.labels, y: payload.charts.requests_sec.xampp, marker: {{ color: '#f2b264' }} }},
-      {{ type: 'bar', name: 'nginx', x: payload.charts.requests_sec.labels, y: payload.charts.requests_sec.nginx, marker: {{ color: '#6dd3b6' }} }},
+      {{ type: 'bar', name: 'XAMPP', x: payload.charts.requests_sec.labels, y: payload.charts.requests_sec.xampp, marker: {{ color: '#f2b264' }} }},
+      {{ type: 'bar', name: 'NGINX (1-core)', x: payload.charts.requests_sec.labels, y: payload.charts.requests_sec.nginx, marker: {{ color: '#6dd3b6' }} }},
+      {{ type: 'bar', name: 'NGINX (Multi)', x: payload.charts.requests_sec.labels, y: payload.charts.requests_sec.nginx_multi, marker: {{ color: '#64b5f6' }} }},
     ];
     Plotly.newPlot('chart-req', reqData, {{ barmode: 'group', paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {{ color: '#e7f4f2' }}, yaxis: {{ tickformat: '.1f', ticksuffix: 'k' }} }});
 
     const latData = [
-      {{ type: 'bar', name: 'xampp', x: payload.charts.latency_ms.labels, y: payload.charts.latency_ms.xampp, marker: {{ color: '#f2b264' }} }},
-      {{ type: 'bar', name: 'nginx', x: payload.charts.latency_ms.labels, y: payload.charts.latency_ms.nginx, marker: {{ color: '#6dd3b6' }} }},
+      {{ type: 'bar', name: 'XAMPP', x: payload.charts.latency_ms.labels, y: payload.charts.latency_ms.xampp, marker: {{ color: '#f2b264' }} }},
+      {{ type: 'bar', name: 'NGINX (1-core)', x: payload.charts.latency_ms.labels, y: payload.charts.latency_ms.nginx, marker: {{ color: '#6dd3b6' }} }},
+      {{ type: 'bar', name: 'NGINX (Multi)', x: payload.charts.latency_ms.labels, y: payload.charts.latency_ms.nginx_multi, marker: {{ color: '#64b5f6' }} }},
     ];
     Plotly.newPlot('chart-lat', latData, {{ barmode: 'group', paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {{ color: '#e7f4f2' }}, yaxis: {{ tickformat: '.1f', ticksuffix: 'k' }} }});
 
     const xferData = [
-      {{ type: 'bar', name: 'xampp', x: payload.charts.transfer_kb_sec.labels, y: payload.charts.transfer_kb_sec.xampp, marker: {{ color: '#f2b264' }} }},
-      {{ type: 'bar', name: 'nginx', x: payload.charts.transfer_kb_sec.labels, y: payload.charts.transfer_kb_sec.nginx, marker: {{ color: '#6dd3b6' }} }},
+      {{ type: 'bar', name: 'XAMPP', x: payload.charts.transfer_kb_sec.labels, y: payload.charts.transfer_kb_sec.xampp, marker: {{ color: '#f2b264' }} }},
+      {{ type: 'bar', name: 'NGINX (1-core)', x: payload.charts.transfer_kb_sec.labels, y: payload.charts.transfer_kb_sec.nginx, marker: {{ color: '#6dd3b6' }} }},
+      {{ type: 'bar', name: 'NGINX (Multi)', x: payload.charts.transfer_kb_sec.labels, y: payload.charts.transfer_kb_sec.nginx_multi, marker: {{ color: '#64b5f6' }} }},
     ];
     Plotly.newPlot('chart-xfer', xferData, {{ barmode: 'group', paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {{ color: '#e7f4f2' }}, yaxis: {{ tickformat: '.1f', ticksuffix: 'k' }} }});
 
     const pctlData = [
-      {{ type: 'bar', name: 'xampp p50', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.xampp.p50, marker: {{ color: 'rgba(242,178,100,0.65)' }} }},
-      {{ type: 'bar', name: 'xampp p90', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.xampp.p90, marker: {{ color: 'rgba(242,178,100,0.85)' }} }},
-      {{ type: 'bar', name: 'xampp p99', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.xampp.p99, marker: {{ color: 'rgba(242,178,100,1.0)' }} }},
-      {{ type: 'bar', name: 'nginx p50', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx.p50, marker: {{ color: 'rgba(109,211,182,0.65)' }} }},
-      {{ type: 'bar', name: 'nginx p90', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx.p90, marker: {{ color: 'rgba(109,211,182,0.85)' }} }},
-      {{ type: 'bar', name: 'nginx p99', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx.p99, marker: {{ color: 'rgba(109,211,182,1.0)' }} }},
+      {{ type: 'bar', name: 'XAMPP p50', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.xampp.p50, marker: {{ color: 'rgba(242,178,100,0.65)' }} }},
+      {{ type: 'bar', name: 'XAMPP p90', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.xampp.p90, marker: {{ color: 'rgba(242,178,100,0.85)' }} }},
+      {{ type: 'bar', name: 'XAMPP p99', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.xampp.p99, marker: {{ color: 'rgba(242,178,100,1.0)' }} }},
+      {{ type: 'bar', name: 'NGINX 1-core p50', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx.p50, marker: {{ color: 'rgba(109,211,182,0.65)' }} }},
+      {{ type: 'bar', name: 'NGINX 1-core p90', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx.p90, marker: {{ color: 'rgba(109,211,182,0.85)' }} }},
+      {{ type: 'bar', name: 'NGINX 1-core p99', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx.p99, marker: {{ color: 'rgba(109,211,182,1.0)' }} }},
+      {{ type: 'bar', name: 'NGINX Multi p50', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx_multi.p50, marker: {{ color: 'rgba(100,181,246,0.65)' }} }},
+      {{ type: 'bar', name: 'NGINX Multi p90', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx_multi.p90, marker: {{ color: 'rgba(100,181,246,0.85)' }} }},
+      {{ type: 'bar', name: 'NGINX Multi p99', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx_multi.p99, marker: {{ color: 'rgba(100,181,246,1.0)' }} }},
     ];
     if (payload.has_pctl) {{
       Plotly.newPlot('chart-pctl', pctlData, {{ barmode: 'group', paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {{ color: '#e7f4f2' }}, yaxis: {{ tickformat: '.1f', ticksuffix: 'k' }} }});
@@ -851,7 +918,7 @@ def generate_html(rows, csv_path: Path, output_path: Path):
     const histData = [
       {{
         type: 'violin',
-        name: 'xampp',
+        name: 'XAMPP',
         y: payload.hist_requests.xampp,
         box: {{ visible: true }},
         meanline: {{ visible: true }},
@@ -860,12 +927,21 @@ def generate_html(rows, csv_path: Path, output_path: Path):
       }},
       {{
         type: 'violin',
-        name: 'nginx',
+        name: 'NGINX (1-core)',
         y: payload.hist_requests.nginx,
         box: {{ visible: true }},
         meanline: {{ visible: true }},
         fillcolor: 'rgba(109, 211, 182, 0.45)',
         line: {{ color: '#6dd3b6' }},
+      }},
+      {{
+        type: 'violin',
+        name: 'NGINX (Multi)',
+        y: payload.hist_requests.nginx_multi,
+        box: {{ visible: true }},
+        meanline: {{ visible: true }},
+        fillcolor: 'rgba(100, 181, 246, 0.45)',
+        line: {{ color: '#64b5f6' }},
       }},
     ];
     Plotly.newPlot('chart-hist', histData, {{
@@ -882,16 +958,25 @@ def generate_html(rows, csv_path: Path, output_path: Path):
         name: 'XAMPP',
         x: payload.charts.requests_sec.labels,
         y: payload.charts.requests_sec.xampp,
+        line: {{ color: '#f2b264', width: 3 }},
+        marker: {{ size: 8 }}
+      }},
+      {{
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'NGINX (1-core)',
+        x: payload.charts.requests_sec.labels,
+        y: payload.charts.requests_sec.nginx,
         line: {{ color: '#6dd3b6', width: 3 }},
         marker: {{ size: 8 }}
       }},
       {{
         type: 'scatter',
         mode: 'lines+markers',
-        name: 'NGINX',
+        name: 'NGINX (Multi)',
         x: payload.charts.requests_sec.labels,
-        y: payload.charts.requests_sec.nginx,
-        line: {{ color: '#ff6b6b', width: 3 }},
+        y: payload.charts.requests_sec.nginx_multi,
+        line: {{ color: '#64b5f6', width: 3 }},
         marker: {{ size: 8 }}
       }}
     ];
