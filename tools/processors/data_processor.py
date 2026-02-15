@@ -188,16 +188,71 @@ class InterpretationBuilder:
             if nm: lat_values["NGINX (Multi-core)"] = nm.latency_ms
             lat_winner = min(lat_values, key=lat_values.get) if lat_values else "N/A"
             
-            # Build interpretation text
+            # Calculate performance deltas for additional context
+            req_delta = None
+            lat_delta = None
+            if x and nm and x.requests_sec > 0 and nm.requests_sec > 0:
+                req_delta = ((nm.requests_sec - x.requests_sec) / x.requests_sec * 100)
+                lat_delta = ((nm.latency_ms - x.latency_ms) / x.latency_ms * 100) if x.latency_ms > 0 else None
+            
+            # Build interpretation text with endpoint-specific insights
             parts = []
+            
+            # 1. Main comparison
             parts.append(texts["interp_compare"].format(req_winner=req_winner, lat_winner=lat_winner))
             
-            if req_winner != lat_winner:
-                parts.append(texts["interp_tradeoff"])
-            else:
-                parts.append(texts["interp_consistent"].format(winner=req_winner))
+            # 2. Endpoint-specific introduction and context
+            endpoint_type = label.lower()
+            if endpoint_type == "cpu":
+                parts.append(texts["interp_cpu_winner"].format(winner=req_winner))
+                if req_winner == lat_winner:
+                    parts.append(texts["interp_cpu_consistent"].format(winner=req_winner))
+                else:
+                    if "NGINX" in req_winner:
+                        parts.append(texts["interp_cpu_nginx_wins"])
+                    else:
+                        parts.append(texts["interp_cpu_xampp_wins"])
+                    parts.append(texts["interp_cpu_tradeoff"].format(req_winner=req_winner, lat_winner=lat_winner))
+                    
+            elif endpoint_type == "io":
+                parts.append(texts["interp_io_winner"].format(winner=req_winner))
+                if req_winner == lat_winner:
+                    parts.append(texts["interp_io_consistent"].format(winner=req_winner))
+                else:
+                    if "XAMPP" in req_winner:
+                        parts.append(texts["interp_io_xampp_wins"])
+                    else:
+                        parts.append(texts["interp_io_nginx_wins"])
+                    parts.append(texts["interp_io_tradeoff"].format(req_winner=req_winner, lat_winner=lat_winner))
+                parts.append(texts["interp_io_context"])
+                
+            elif endpoint_type == "json":
+                parts.append(texts["interp_json_winner"].format(winner=req_winner))
+                if req_winner == lat_winner:
+                    parts.append(texts["interp_json_consistent"].format(winner=req_winner))
+                else:
+                    if "NGINX" in req_winner:
+                        parts.append(texts["interp_json_nginx_wins"])
+                    else:
+                        parts.append(texts["interp_json_xampp_wins"])
+                    parts.append(texts["interp_json_tradeoff"].format(req_winner=req_winner, lat_winner=lat_winner))
+                parts.append(texts["interp_json_context"])
             
-            # Check P99
+            # 3. Performance delta context (optional)
+            if req_delta is not None:
+                if req_delta > 10:
+                    direction = "significantly faster"
+                elif req_delta > 0:
+                    direction = "moderately faster"
+                elif req_delta > -10:
+                    direction = "slightly slower"
+                else:
+                    direction = "significantly slower"
+                # Only add if notable difference
+                if abs(req_delta) > 5:
+                    parts.append(f"({req_winner} is {direction})")
+            
+            # 4. Check P99 tail latency
             p99_values = []
             if x and x.latency_p99_ms is not None: p99_values.append(x.latency_p99_ms)
             if nm and nm.latency_p99_ms is not None: p99_values.append(nm.latency_p99_ms)
@@ -210,3 +265,4 @@ class InterpretationBuilder:
             notes.append(Interpretation(endpoint=label, text=" ".join(parts)))
         
         return notes
+

@@ -47,6 +47,30 @@ TEXTS = {
         "interp_consistent": "Both key metrics favor {winner}; it is the safer default for this workload.",
         "interp_tail": "High P99 indicates some requests will be significantly slower. If your application prioritizes response time (e.g., API or frontend services), consider choosing a setup with lower tail latency.",
         "interp_p99_missing": "P99 is missing; rerun benchmark with latency percentiles to validate tail behavior.",
+        
+        # CPU-specific interpretations
+        "interp_cpu_winner": "{winner} excels at CPU-bound workloads.",
+        "interp_cpu_nginx_wins": "NGINX's multi-core architecture leverages parallel processing, making it ideal for CPU-intensive applications like analytics, data processing, or scientific computing. The throughput advantage demonstrates superior scalability.",
+        "interp_cpu_xampp_wins": "XAMPP's competitive CPU performance indicates efficient single-process optimization. This suggests the workload may not need multi-core scaling, or Apache's configuration is well-optimized for this task.",
+        "interp_cpu_tradeoff": "CPU-heavy workloads benefit significantly from multi-core systems. If throughput is your priority, choose {req_winner}. If you need predictable latency for interactive applications, evaluate {lat_winner}.",
+        "interp_cpu_consistent": "Both metrics favor {winner}, indicating comprehensive CPU efficiency. Recommended for applications requiring both high throughput and responsive performance.",
+        
+        # I/O-specific interpretations
+        "interp_io_winner": "{winner} handles I/O-bound operations more efficiently.",
+        "interp_io_xampp_wins": "XAMPP's superior I/O performance is notable—this may reflect optimized disk caching, efficient connection pooling, or Apache's proven stability with database workloads. Ideal for database-heavy applications.",
+        "interp_io_nginx_wins": "NGINX's strong I/O throughput combined with PHP-FPM demonstrates its ability to handle concurrent I/O operations. This is typical for high-traffic services with database queries or file operations.",
+        "interp_io_tradeoff": "I/O patterns vary significantly by application. For high-concurrency batch processing, choose {req_winner}. For interactive database queries requiring low latency, choose {lat_winner}.",
+        "interp_io_consistent": "Both metrics favor {winner}, making it the recommended choice for mixed I/O workloads including databases and file operations.",
+        "interp_io_context": "I/O performance is heavily influenced by disk subsystem and external services. These results reflect system-level I/O efficiency.",
+        
+        # JSON-specific interpretations
+        "interp_json_winner": "{winner} is the better choice for JSON processing.",
+        "interp_json_nginx_wins": "NGINX's advantage in JSON workloads reflects its efficiency in request serialization and payload handling. Critical for modern REST APIs and real-time data services.",
+        "interp_json_xampp_wins": "XAMPP's competitive JSON performance suggests well-optimized serialization, making it suitable for REST API backends or SPA servers with moderate payload sizes.",
+        "interp_json_tradeoff": "JSON serialization affects API responsiveness directly. Choose {req_winner} for high-throughput API gateways; choose {lat_winner} for latency-sensitive frontend services.",
+        "interp_json_consistent": "Both metrics favor {winner}, indicating exceptional capability for JSON-heavy applications like REST APIs, GraphQL servers, or real-time feeds.",
+        "interp_json_context": "JSON performance impacts user experience in modern web applications. These results are critical for API development decisions.",
+        
         "endpoints_title": "Benchmark Endpoints & Methodology",
         "endpoints_intro": "This benchmark uses three carefully selected PHP endpoints to simulate real-world application scenarios. Each endpoint exercises different server capabilities to provide a comprehensive performance assessment.",
         "endpoint_cpu_title": "CPU Endpoint: Computational Workload",
@@ -103,6 +127,30 @@ TEXTS = {
         "interp_consistent": "兩項指標都偏向 {winner}，可作為此工作負載的優先選擇。",
         "interp_tail": "P99 明顯偏高，代表部分請求的延遲會特別久。若你的應用對響應速度要求高（如API/前端服務），應選擇尾端延遲更低的方案。",
         "interp_p99_missing": "缺少 P99，請重新跑壓測以確認尾端延遲。",
+        
+        # CPU-specific interpretations
+        "interp_cpu_winner": "{winner} 在 CPU 密集型工作負載上表現卓越。",
+        "interp_cpu_nginx_wins": "NGINX 的多核心架構充分利用並行處理能力，適合分析、數據處理或科學計算等 CPU 密集型應用。吞吐量優勢證明了其卓越的可擴展性。",
+        "interp_cpu_xampp_wins": "XAMPP 的 CPU 性能具競爭力，表明單進程優化充分。這意味著該工作負載可能無需多核擴展，或 Apache 配置對此任務進行了良好最佳化。",
+        "interp_cpu_tradeoff": "CPU 密集型工作負載從多核系統中獲益顯著。若優先考慮吞吐量，選擇 {req_winner}；若需要互動應用的可預測延遲，評估 {lat_winner}。",
+        "interp_cpu_consistent": "兩項指標都偏向 {winner}，表示全面的 CPU 效率。建議用於同時需要高吞吐量與快速回應的應用。",
+        
+        # I/O-specific interpretations
+        "interp_io_winner": "{winner} 在 I/O 密集型操作上表現更高效。",
+        "interp_io_xampp_wins": "XAMPP 的 I/O 性能優異—這可能反映了優化的磁碟快取、高效的連接池管理，或 Apache 在資料庫工作負載上的穩定性優勢。適合資料庫密集型應用。",
+        "interp_io_nginx_wins": "NGINX 強大的 I/O 吞吐量與 PHP-FPM 的結合展示了其處理併發 I/O 操作的能力。這是高流量服務（涉及資料庫查詢或文件操作）的典型表現。",
+        "interp_io_tradeoff": "I/O 模式因應用而異。高併發批處理選 {req_winner}；互動式資料庫查詢需低延遲時選 {lat_winner}。",
+        "interp_io_consistent": "兩項指標都偏向 {winner}，為混合型 I/O 工作負載（包括資料庫與檔案操作）的推薦選擇。",
+        "interp_io_context": "I/O 性能深受磁碟子系統與外部服務影響。這些結果反映系統級 I/O 效率。",
+        
+        # JSON-specific interpretations
+        "interp_json_winner": "{winner} 是 JSON 處理的更佳選擇。",
+        "interp_json_nginx_wins": "NGINX 在 JSON 工作負載上的優勢體現了其請求序列化與 payload 處理的效率。對於現代 REST API 與即時數據服務至關重要。",
+        "interp_json_xampp_wins": "XAMPP 具競爭力的 JSON 性能表明序列化最佳化充分，適合 REST API 後端或中等 payload 規模的 SPA 伺服器。",
+        "interp_json_tradeoff": "JSON 序列化直接影響 API 回應速度。選 {req_winner} 用於高吞吐量 API 閘道；選 {lat_winner} 用於延遲敏感的前端服務。",
+        "interp_json_consistent": "兩項指標都偏向 {winner}，表示對 JSON 密集型應用的卓越能力，如 REST API、GraphQL 伺服器或即時數據饋送。",
+        "interp_json_context": "JSON 性能影響現代網路應用的用戶體驗。這些結果對 API 開發決策至關重要。",
+        
         "endpoints_title": "壓測端點與設計方法",
         "endpoints_intro": "本壓測使用三個精心選擇的 PHP 端點來模擬真實應用場景。每個端點各自對伺服器的不同能力進行壓力測試，以提供全面的效能評估。",
         "endpoint_cpu_title": "CPU 端點：運算密集型工作",
