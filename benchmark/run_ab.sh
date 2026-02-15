@@ -25,6 +25,44 @@ echo "timestamp,server,endpoint,requests_sec,latency_avg,latency_p50,latency_p75
 echo "[" > "$JSON_FILE"
 JSON_FIRST=1
 
+# Save benchmark configuration
+CONFIG_FILE="${OUT_DIR}/config.json"
+cat > "$CONFIG_FILE" <<'CONFIGEOF'
+{
+  "duration": DURATION_VAL,
+  "connections": CONNECTIONS_VAL,
+  "endpoints": [
+    "cpu.php",
+    "json.php",
+    "io.php"
+  ],
+  "endpoint_params": {
+    "cpu": {
+      "iterations": ITER_VAL
+    },
+    "json": {
+      "items": JSON_N_VAL
+    },
+    "io": {
+      "size": IO_SIZE_VAL,
+      "iterations": IO_ITER_VAL,
+      "mode": "IO_MODE_VAL"
+    }
+  },
+  "test_time": "TEST_TIME_VAL"
+}
+CONFIGEOF
+
+# Replace placeholders with actual values
+sed -i "s/DURATION_VAL/$DURATION/g" "$CONFIG_FILE"
+sed -i "s/CONNECTIONS_VAL/$CONNECTIONS/g" "$CONFIG_FILE"
+sed -i "s/ITER_VAL/$ITER/g" "$CONFIG_FILE"
+sed -i "s/JSON_N_VAL/$JSON_N/g" "$CONFIG_FILE"
+sed -i "s/IO_SIZE_VAL/$IO_SIZE/g" "$CONFIG_FILE"
+sed -i "s/IO_ITER_VAL/$IO_ITER/g" "$CONFIG_FILE"
+sed -i "s/IO_MODE_VAL/$IO_MODE/g" "$CONFIG_FILE"
+sed -i "s/TEST_TIME_VAL/$(date -u +%Y-%m-%dT%H:%M:%SZ)/g" "$CONFIG_FILE"
+
 wait_for() {
     name="$1"
     url="$2"

@@ -80,6 +80,22 @@ TEXTS = {
         "endpoint_json_title": "JSON Endpoint: Data Serialization & Transfer",
         "endpoint_json_desc": "Purpose: Tests JSON encoding/decoding performance and payload handling—a common operation in modern REST APIs and AJAX applications. This endpoint balances CPU work with memory operations. Use case: Reflects modern web service patterns where responses are serialized to JSON (e.g., REST APIs, real-time data feeds, SPA backends). Metric insight: Indicates how efficiently the server can generate dynamic content and handle medium-to-large payloads.",
         "theme_label": "Theme:",
+        
+        # Summary section
+        "summary_title": "Benchmark Configuration & Summary",
+        "summary_intro": "This section outlines the key parameters used in this benchmark test. Understanding these settings helps interpret performance results in context.",
+        "summary_duration": "Test Duration",
+        "summary_duration_unit": "seconds",
+        "summary_connections": "Concurrent Connections",
+        "summary_connections_unit": "threads",
+        "summary_cpu_iter": "CPU Iterations",
+        "summary_json_items": "JSON Items",
+        "summary_io_size": "I/O Block Size",
+        "summary_io_size_unit": "bytes",
+        "summary_io_iter": "I/O Iterations",
+        "summary_io_mode": "I/O Mode",
+        "summary_endpoints": "Test Endpoints",
+        "summary_test_time": "Test Timestamp",
     },
     "zh": {
         "lang": "zh-Hant",
@@ -160,6 +176,22 @@ TEXTS = {
         "endpoint_json_title": "JSON 端點：資料序列化與傳輸",
         "endpoint_json_desc": "用途：測試 JSON 編碼/解碼效能與 payload 處理—這是現代 REST API 與 AJAX 應用的常見操作。此端點平衡了 CPU 工作與記憶體操作。應用場景：反映現代網路服務的典型模式，其中回應被序列化為 JSON（例如 REST API、即時數據饋送、SPA 後端）。指標意義：指示伺服器産生動態內容與處理中等到大型 payload 的效率。",
         "theme_label": "佈景主題:",
+        
+        # Summary section
+        "summary_title": "壓測配置與摘要",
+        "summary_intro": "本節說明此壓測所採用的關鍵參數。了解這些設定有助於將效能結果放在適當的背景中進行解讀。",
+        "summary_duration": "測試持續時間",
+        "summary_duration_unit": "秒",
+        "summary_connections": "並行連接數",
+        "summary_connections_unit": "個執行緒",
+        "summary_cpu_iter": "CPU 迴圈次數",
+        "summary_json_items": "JSON 項目數",
+        "summary_io_size": "I/O 區塊大小",
+        "summary_io_size_unit": "位元組",
+        "summary_io_iter": "I/O 迴圈次數",
+        "summary_io_mode": "I/O 模式",
+        "summary_endpoints": "測試端點",
+        "summary_test_time": "測試時間戳",
     }
 }
 

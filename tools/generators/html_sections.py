@@ -5,6 +5,66 @@ from models.benchmark import BenchmarkRow, Insight
 from processors.data_processor import format_endpoint_label
 
 
+class SummarySection:
+    """Builds the benchmark configuration summary section."""
+    
+    @staticmethod
+    def build(config: Dict[str, Any]) -> str:
+        """Build summary section HTML."""
+        duration = config.get("duration", "N/A")
+        connections = config.get("connections", "N/A")
+        endpoint_params = config.get("endpoint_params", {})
+        
+        cpu_iter = endpoint_params.get("cpu", {}).get("iterations", "N/A")
+        json_items = endpoint_params.get("json", {}).get("items", "N/A")
+        io_size = endpoint_params.get("io", {}).get("size", "N/A")
+        io_iter = endpoint_params.get("io", {}).get("iterations", "N/A")
+        io_mode = endpoint_params.get("io", {}).get("mode", "N/A")
+        
+        return f"""    <div class="card" style="margin-bottom: 16px; background: rgba(109, 211, 182, 0.1); border-color: rgba(109, 211, 182, 0.3);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+        <h2 data-i18n="summary_title" style="margin: 0;"></h2>
+        <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
+      </div>
+      <div class="card-content">
+        <p class="desc" data-i18n="summary_intro"></p>
+        <div style="margin-top: 16px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 16px;">
+          <div style="text-align: center;">
+            <div style="font-weight: 500; color: var(--muted); font-size: 12px; margin-bottom: 6px;" data-i18n="summary_duration"></div>
+            <div style="font-size: 18px; font-weight: bold; color: var(--text);"><strong>{duration}</strong></div>
+            <div style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="summary_duration_unit"></div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-weight: 500; color: var(--muted); font-size: 12px; margin-bottom: 6px;" data-i18n="summary_connections"></div>
+            <div style="font-size: 18px; font-weight: bold; color: var(--text);"><strong>{connections}</strong></div>
+            <div style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="summary_connections_unit"></div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-weight: 500; color: var(--muted); font-size: 12px; margin-bottom: 6px;" data-i18n="summary_cpu_iter"></div>
+            <div style="font-size: 18px; font-weight: bold; color: var(--text);"><strong>{cpu_iter}</strong></div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-weight: 500; color: var(--muted); font-size: 12px; margin-bottom: 6px;" data-i18n="summary_json_items"></div>
+            <div style="font-size: 18px; font-weight: bold; color: var(--text);"><strong>{json_items}</strong></div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-weight: 500; color: var(--muted); font-size: 12px; margin-bottom: 6px;" data-i18n="summary_io_size"></div>
+            <div style="font-size: 18px; font-weight: bold; color: var(--text);"><strong>{io_size}</strong></div>
+            <div style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="summary_io_size_unit"></div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-weight: 500; color: var(--muted); font-size: 12px; margin-bottom: 6px;" data-i18n="summary_io_iter"></div>
+            <div style="font-size: 18px; font-weight: bold; color: var(--text);"><strong>{io_iter}</strong></div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-weight: 500; color: var(--muted); font-size: 12px; margin-bottom: 6px;" data-i18n="summary_io_mode"></div>
+            <div style="font-size: 18px; font-weight: bold; color: var(--text);"><strong>{io_mode}</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>"""
+
+
 class EndpointsSection:
     """Builds the endpoints explanation section."""
     

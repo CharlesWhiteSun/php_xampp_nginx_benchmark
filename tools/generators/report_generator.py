@@ -2,13 +2,14 @@
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import List
+import json
 
 from models.benchmark import BenchmarkRow, Insight, Interpretation, ReportPayload
 from loaders.csv_loader import CSVLoader, CSVFinder
 from processors.data_processor import ChartDataProcessor, HistogramDataProcessor, InsightBuilder, InterpretationBuilder
 from generators.html_builder import CSSGenerator, HTMLStructureBuilder
 from generators.javascript_generator import JavaScriptGenerator
-from generators.html_sections import EndpointsSection, FormulasSection, ChartsGridSection, InsightsTable, InterpretationSection, RawResultsSection
+from generators.html_sections import EndpointsSection, FormulasSection, ChartsGridSection, InsightsTable, InterpretationSection, RawResultsSection, SummarySection
 from i18n.texts import get_text
 
 
@@ -33,6 +34,9 @@ class ReportGenerator:
         
         # Load and normalize data
         rows = self.csv_loader.load_and_normalize(csv_path)
+        
+        # Load benchmark configuration
+        config = self._load_config(csv_path.parent)
         
         # Process data
         charts, endpoints = self.chart_processor.process(rows)
@@ -67,13 +71,13 @@ class ReportGenerator:
         }
         
         # Generate HTML
-        html_content = self._build_html(payload, rows, insights)
+        html_content = self._build_html(payload, rows, insights, config)
         output_path = self.reports_dir / "report.html"
         output_path.write_text(html_content, encoding="utf-8")
         
         return output_path
     
-    def _build_html(self, payload: dict, rows: List[BenchmarkRow], insights: List[Insight]) -> str:
+    def _build_html(self, payload: dict, rows: List[BenchmarkRow], insights: List[Insight], config: dict) -> str:
         """Build complete HTML document."""
         texts = {
             "en": get_text("en"),
@@ -89,7 +93,7 @@ class ReportGenerator:
         interaction_code = JavaScriptGenerator.generate_interaction_code()
         
         # Build main content sections
-        main_content = self._build_main_content(rows, insights)
+        main_content = self._build_main_content(rows, insights, config)
         
         # Load the main HTML structure template
         html_template = self._get_html_template()
@@ -107,8 +111,9 @@ class ReportGenerator:
         
         return html
     
-    def _build_main_content(self, rows: List[BenchmarkRow], insights: List[Insight]) -> str:
+    def _build_main_content(self, rows: List[BenchmarkRow], insights: List[Insight], config: dict) -> str:
         """Build all main content sections."""
+        summary_html = SummarySection.build(config)
         endpoints_html = EndpointsSection.build()
         formulas_html = FormulasSection.build()
         charts_html = ChartsGridSection.build()
@@ -116,7 +121,9 @@ class ReportGenerator:
         interpretation_html = InterpretationSection.build()
         raw_results_html = RawResultsSection.build(rows)
         
-        return f"""{endpoints_html}
+        return f"""{summary_html}
+
+{endpoints_html}
 
 {formulas_html}
 
@@ -197,4 +204,33 @@ class ReportGenerator:
         for row in rows:
             if row.latency_p50_ms is not None or row.latency_p99_ms is not None:
                 return True
-        return False
+        return False    
+    @staticmethod
+    def _load_config(results_dir: Path) -> dict:
+        """Load benchmark configuration from config.json."""
+        config_path = results_dir / "config.json"
+        
+        # Default configuration
+        default_config = {
+            "duration": 10,
+            "connections": 50,
+            "endpoints": ["cpu.php", "json.php", "io.php"],
+            "endpoint_params": {
+                "cpu": {"iterations": 10000},
+                "json": {"items": 2000},
+                "io": {"size": 8192, "iterations": 20, "mode": "memory"}
+            },
+            "test_time": "N/A"
+        }
+        
+        # Try to load configuration from file
+        if config_path.exists():
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    loaded_config = json.load(f)
+                    # Merge with defaults
+                    return {**default_config, **loaded_config}
+            except (json.JSONDecodeError, IOError):
+                pass
+        
+        return default_config
