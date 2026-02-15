@@ -95,6 +95,175 @@ open reports/report.html
 xdg-open reports/report.html
 ```
 
+## 常用命令 ⌨️
+
+> **注意：** 使用以下命令時，請確保已進入項目目錄
+> ```powershell
+> cd D:\dev\php\php_xampp_nginx_benchmark
+> ```
+
+### 🐳 Docker 容器管理
+
+```bash
+# 啟動所有 Docker 容器（XAMPP, NGINX, PHP-FPM）
+docker-compose up -d
+
+# 停止所有容器
+docker-compose down
+
+# 查看容器運行狀態
+docker-compose ps
+
+# 查看特定服務的日誌
+docker-compose logs -f xampp      # XAMPP Apache 日誌
+docker-compose logs -f nginx      # NGINX 日誌  
+docker-compose logs -f nginx-multi # NGINX Multi-core 日誌
+
+# 重新構建容器鏡像（強制更新，無緩存）
+docker-compose build --no-cache
+
+# 重建並重啟所有容器
+docker-compose up -d --build
+```
+
+### 📊 基準測試執行
+
+```bash
+# [✅ 推薦] 在 Docker 容器中執行基準測試（包含 Apache Bench）
+docker-compose run --rm benchmark bash ./benchmark/run_ab.sh
+
+# [⚠️ 複雜] 使用 wrk 工具執行基準測試（需要 Docker）
+docker-compose run --rm benchmark bash ./benchmark/run.sh
+
+# [本機執行] 執行 ApacheBench 基準測試（需本機安裝 ab）
+bash ./benchmark/run_ab.sh
+
+# [自定義參數] 使用自定義參數執行測試
+# 修改並發數和測試時間
+DURATION=30 CONNECTIONS=100 docker-compose run --rm benchmark bash ./benchmark/run_ab.sh
+
+# [快速對比] 快速 I/O 性能對比
+bash ./benchmark/quick_io_comparison.sh
+```
+
+### 📈 報告生成
+
+```bash
+# 生成最新的 HTML 報告
+python ./tools/generate_report_new.py
+
+# 生成報告並自動打開瀏覽器（Windows）
+python ./tools/generate_report_new.py; start reports/report.html
+
+# 生成報告並自動打開瀏覽器（macOS）
+python ./tools/generate_report_new.py && open reports/report.html
+
+# 生成報告並自動打開瀏覽器（Linux）
+python ./tools/generate_report_new.py && xdg-open reports/report.html
+```
+
+### 🧪 測試和驗證
+
+```bash
+# 運行單元測試
+python ./tools/test_modules.py
+
+# 查看最新的測試結果目錄
+# Windows PowerShell：
+Get-ChildItem results/ | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+
+# Linux/macOS/Git Bash：
+ls -d results/*/ | sort -r | head -1
+
+# 查看最新結果的 CSV 數據
+# Windows PowerShell：
+$latest = Get-ChildItem results/ -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+Get-Content "$latest/results.csv"
+
+# Linux/macOS/Git Bash：
+cat results/$(ls -t results/ | head -1)/results.csv
+```
+
+### 🔓 Python 虛擬環境
+
+```bash
+# [Windows] 激活虛擬環境
+.venv\Scripts\Activate.ps1
+
+# [Linux/macOS] 激活虛擬環境
+source .venv/bin/activate
+
+# 退出虛擬環境
+deactivate
+
+# 創建虛擬環境（如果尚未存在）
+python -m venv .venv
+
+# 檢查已安裝的包
+python -m pip list
+
+# 升級 pip
+python -m pip install --upgrade pip
+```
+
+### 📁 文件和目錄管理
+
+```bash
+# 創建或確保目錄結構存在
+mkdir -p results/ reports/ logs/
+
+# 清理舊的測試結果（小心！會刪除所有結果）
+Remove-Item results/* -Recurse -Force -ErrorAction SilentlyContinue  # Windows PowerShell
+# 或
+rm -rf results/*  # Linux/macOS/Git Bash
+
+# 查看報告目錄
+# Windows PowerShell：
+Get-ChildItem reports/
+
+# Linux/macOS：
+ls -la reports/
+
+# 檢查最新報告生成時間
+# Windows PowerShell：
+Get-Item reports/report.html | Select-Object LastWriteTime
+
+# Linux/macOS：
+ls -lh reports/report.html
+```
+
+### 🌐 服務連接測試（需在 bash/Git Bash 中執行）
+
+```bash
+# 測試 XAMPP 連接（端口 8081）
+bash -c "curl -s http://localhost:8081/cpu.php?n=100 | grep -o 'workload.*' | head -c 50"
+
+# 測試 NGINX（端口 8082）
+bash -c "curl -s http://localhost:8082/cpu.php?n=100"
+
+# 測試 NGINX Multi-core（端口 8083）
+bash -c "curl -s http://localhost:8083/cpu.php?n=100"
+
+# 測試所有三個服務
+bash -c "for port in 8081 8082 8083; do echo \"Port $port:\"; curl -s http://localhost:$port/cpu.php?n=100 | grep -o '\"elapsed_ms\":[^ ,]*'; done"
+
+# 檢查 JSON 端點
+bash -c "curl -s http://localhost:8081/json.php?n=100"
+
+# 檢查 I/O 端點
+bash -c "curl -s http://localhost:8081/io.php?size=8192&iter=10&mode=memory"
+```
+
+### 🔧 一鍵完整工作流
+
+```bash
+# [快速開發流程] Docker 啟動 → 執行測試 → 生成報告
+docker-compose up -d && docker-compose run --rm benchmark bash ./benchmark/run_ab.sh && python ./tools/generate_report_new.py
+
+# [查看報告] 生成報告後自動打開（Windows）
+python ./tools/generate_report_new.py; start reports/report.html
+```
+
 ## 測試端點說明 🔍
 
 ### 1. **CPU 端點** (`/benchmarks/cpu.php`)
