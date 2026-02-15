@@ -1,0 +1,264 @@
+"""HTML and CSS generation for reports."""
+from pathlib import Path
+from typing import Dict, Any
+
+
+class CSSGenerator:
+    """Generates CSS styles for the report."""
+    
+    @staticmethod
+    def generate() -> str:
+        """Generate CSS styles."""
+        return """
+    :root {
+      --bg: #0f1b1e;
+      --panel: #13262a;
+      --text: #e7f4f2;
+      --muted: #a7c8c2;
+      --accent: #f2b264;
+      --accent2: #6dd3b6;
+    }
+    body {
+      margin: 0;
+      font-family: "Noto Serif TC", "Source Han Serif TC", "PMingLiU", serif;
+      background: radial-gradient(1200px 800px at 20% -10%, #1f3c3f, transparent), var(--bg);
+      color: var(--text);
+    }
+    body.light-theme {
+      --bg: #f5f5f5;
+      --panel: #ffffff;
+      --text: #1a1a1a;
+      --muted: #666666;
+      --accent: #f2b264;
+      --accent2: #6dd3b6;
+      background: radial-gradient(1200px 800px at 20% -10%, #e8f0ef, transparent), var(--bg);
+    }
+    body.dark-theme {
+      --bg: #000000;
+      --panel: #0a0a0a;
+      --text: #d0d0d0;
+      --muted: #888888;
+      --accent: #f2b264;
+      --accent2: #6dd3b6;
+      background: var(--bg);
+    }
+    header {
+      padding: 32px 24px;
+      border-bottom: 1px solid rgba(31, 60, 63, 0.5);
+      background: var(--panel);
+    }
+    body.light-theme header {
+      background: linear-gradient(120deg, rgba(232, 240, 239, 0.8), var(--bg));
+      border-bottom: 1px solid #d0d0d0;
+    }
+    body.dark-theme header {
+      background: var(--bg);
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 28px;
+      letter-spacing: 0.5px;
+      color: var(--text);
+    }
+    .lang-switch {
+      display: flex;
+      gap: 8px;
+    }
+    .lang-btn {
+      border: 1px solid rgba(31, 60, 63, 0.3);
+      background: transparent;
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    body.light-theme .lang-btn {
+      border-color: #d0d0d0;
+    }
+    body.dark-theme .lang-btn {
+      border-color: #333333;
+    }
+    .lang-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    footer {
+      background: var(--panel);
+      border-top: 1px solid #1f3c3f;
+      padding: 24px;
+      margin-top: 40px;
+      text-align: center;
+    }
+    .theme-switch {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .theme-label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-right: 8px;
+    }
+    .theme-btn {
+      border: 2px solid #1f3c3f;
+      background: transparent;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0;
+    }
+    .theme-btn::after {
+      content: '●';
+      font-size: 9px;
+      color: var(--muted);
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+    .theme-btn:hover {
+      border-color: var(--muted);
+    }
+    .theme-btn.active {
+      border-color: var(--accent);
+    }
+    .theme-btn.active::after {
+      opacity: 1;
+      color: var(--accent);
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid #1f3c3f;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+    .card h2 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      color: var(--accent);
+    }
+    .plot {
+      height: 320px;
+    }
+    .desc {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 8px 0 0 0;
+    }
+    .formula {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding-left: 18px;
+    }
+    .formula li {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .interpretation {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding-left: 18px;
+    }
+    .interpretation li {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      border-bottom: 1px solid #1f3c3f;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+    }
+"""
+
+
+class HTMLStructureBuilder:
+    """Builds HTML structure."""
+    
+    @staticmethod
+    def build_header() -> str:
+        """Build header section."""
+        return """  <header>
+    <div class="header-row">
+      <div>
+        <h1 data-i18n="title"></h1>
+        <div class="meta"><span data-i18n="meta_generated"></span>: <span id="meta-generated"></span></div>
+      </div>
+      <div class="lang-switch">
+        <button class="lang-btn" data-lang="en">English</button>
+        <button class="lang-btn" data-lang="zh">繁體中文</button>
+      </div>
+    </div>
+  </header>"""
+    
+    @staticmethod
+    def build_footer() -> str:
+        """Build footer section."""
+        return """  <footer>
+    <div class="theme-switch">
+      <span class="theme-label" data-i18n="theme_label"></span>
+      <button class="theme-btn" data-theme="light" title="Light Theme"></button>
+      <button class="theme-btn" data-theme="default" title="Default/Dark Theme"></button>
+      <button class="theme-btn" data-theme="dark" title="Pure Dark Theme"></button>
+    </div>
+  </footer>"""
+    
+    @staticmethod
+    def build_head(css: str = "") -> str:
+        """Build HTML head section."""
+        head_start = """<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PHP Benchmark Report</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <style>
+{css}
+  </style>
+</head>"""
+        return head_start.format(css=css)
