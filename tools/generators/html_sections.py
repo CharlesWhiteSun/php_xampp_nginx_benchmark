@@ -2,6 +2,7 @@
 from typing import List, Dict, Any
 
 from models.benchmark import BenchmarkRow, Insight
+from processors.data_processor import format_endpoint_label
 
 
 class EndpointsSection:
@@ -134,7 +135,7 @@ class InsightsTable:
     def build(insights: List[Dict[str, Any]]) -> str:
         """Build insights table HTML."""
         rows = "".join([
-            f'<tr><td>{i["endpoint"].replace(".php", "")}</td><td>{i["req_winner"]}</td><td>{i["req_delta"]:.1f}</td><td>{i["lat_winner"]}</td><td>{i["lat_delta"]:.1f}</td></tr>'
+            f'<tr><td>{format_endpoint_label(i["endpoint"])}</td><td>{i["req_winner"]}</td><td>{i["req_delta"]:.1f}</td><td>{i["lat_winner"]}</td><td>{i["lat_delta"]:.1f}</td></tr>'
             for i in insights
         ])
         
@@ -190,12 +191,12 @@ class RawResultsSection:
     def build(rows: List[BenchmarkRow]) -> str:
         """Build raw results section HTML."""
         xampp_rows = "".join([
-            f'<tr><td>{r.endpoint.replace(".php", "")}</td><td>{r.requests_sec:.2f}</td><td>{r.latency_avg}</td><td>{r.latency_p50}</td><td>{r.latency_p90}</td><td>{r.latency_p99}</td><td>{r.transfer_sec}</td></tr>'
+            f'<tr><td>{format_endpoint_label(r.endpoint)}</td><td>{r.requests_sec:.2f}</td><td>{r.latency_avg}</td><td>{r.latency_p50}</td><td>{r.latency_p90}</td><td>{r.latency_p99}</td><td>{r.transfer_sec}</td></tr>'
             for r in rows if r.server == 'xampp'
         ])
         
         nginx_multi_rows = "".join([
-            f'<tr><td>{r.endpoint.replace(".php", "")}</td><td>{r.requests_sec:.2f}</td><td>{r.latency_avg}</td><td>{r.latency_p50}</td><td>{r.latency_p90}</td><td>{r.latency_p99}</td><td>{r.transfer_sec}</td></tr>'
+            f'<tr><td>{format_endpoint_label(r.endpoint)}</td><td>{r.requests_sec:.2f}</td><td>{r.latency_avg}</td><td>{r.latency_p50}</td><td>{r.latency_p90}</td><td>{r.latency_p99}</td><td>{r.transfer_sec}</td></tr>'
             for r in rows if r.server == 'nginx_multi'
         ])
         

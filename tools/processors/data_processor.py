@@ -6,6 +6,19 @@ from models.benchmark import BenchmarkRow, ChartData, PercentileData, Insight, I
 from i18n.texts import get_text
 
 
+def format_endpoint_label(endpoint: str) -> str:
+    """Convert endpoint to display label (e.g., 'cpu.php' -> 'CPU')."""
+    name = endpoint.replace(".php", "").lower()
+    if name == "cpu":
+        return "CPU"
+    elif name == "io":
+        return "I/O"
+    elif name == "json":
+        return "JSON"
+    else:
+        return name.upper()
+
+
 class ChartDataProcessor:
     """Processes benchmark data into chart-ready format."""
     
@@ -21,7 +34,7 @@ class ChartDataProcessor:
             by_endpoint[row.endpoint].append(row)
         
         endpoints = sorted(by_endpoint.keys())
-        labels = [e.replace(".php", "") for e in endpoints]
+        labels = [format_endpoint_label(e) for e in endpoints]
         
         charts = {
             "requests_sec": self._build_chart_data(by_endpoint, endpoints, lambda r: r.requests_sec),
@@ -38,7 +51,7 @@ class ChartDataProcessor:
         """Build a single chart dataset."""
         chart = ChartData()
         for endpoint in endpoints:
-            label = endpoint.replace(".php", "")
+            label = format_endpoint_label(endpoint)
             chart.labels.append(label)
             
             x = next((r for r in by_endpoint[endpoint] if r.server == "xampp"), None)
@@ -58,7 +71,7 @@ class ChartDataProcessor:
         """Build percentile data."""
         pctl = PercentileData()
         for endpoint in endpoints:
-            label = endpoint.replace(".php", "")
+            label = format_endpoint_label(endpoint)
             pctl.labels.append(label)
             
             x = next((r for r in by_endpoint[endpoint] if r.server == "xampp"), None)
@@ -87,7 +100,7 @@ class ChartDataProcessor:
         labels = []
         values = []
         for endpoint in endpoints:
-            labels.append(endpoint.replace(".php", ""))
+            labels.append(format_endpoint_label(endpoint))
             
             x = next((r for r in by_endpoint[endpoint] if r.server == "xampp"), None)
             nm = next((r for r in by_endpoint[endpoint] if r.server == "nginx_multi"), None)
@@ -174,6 +187,7 @@ class InterpretationBuilder:
         notes = []
         for endpoint in endpoints:
             label = endpoint.replace(".php", "")
+            display_label = format_endpoint_label(endpoint)
             x = next((r for r in by_endpoint[endpoint] if r.server == "xampp"), None)
             nm = next((r for r in by_endpoint[endpoint] if r.server == "nginx_multi"), None)
             
@@ -262,7 +276,7 @@ class InterpretationBuilder:
             elif not p99_values:
                 parts.append(texts["interp_p99_missing"])
             
-            notes.append(Interpretation(endpoint=label, text=" ".join(parts)))
+            notes.append(Interpretation(endpoint=display_label, text=" ".join(parts)))
         
         return notes
 
