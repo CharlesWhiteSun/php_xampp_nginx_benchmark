@@ -5,15 +5,16 @@ DURATION=${DURATION:-10}
 CONNECTIONS=${CONNECTIONS:-50}
 ITER=${ITER:-10000}
 JSON_N=${JSON_N:-2000}
-IO_SIZE=${IO_SIZE:-32768}
-IO_ITER=${IO_ITER:-50}
+IO_SIZE=${IO_SIZE:-8192}
+IO_ITER=${IO_ITER:-20}
+IO_MODE=${IO_MODE:-memory}
 ENDPOINTS=${ENDPOINTS:-"cpu.php json.php io.php"}
 
-URL_XAMPP=${URL_XAMPP:-http://xampp/}
-URL_NGINX=${URL_NGINX:-http://nginx/}
-URL_NGINX_MULTI=${URL_NGINX_MULTI:-http://nginx-multi/}
+URL_XAMPP=${URL_XAMPP:-http://localhost:8081/}
+URL_NGINX=${URL_NGINX:-http://localhost:8082/}
+URL_NGINX_MULTI=${URL_NGINX_MULTI:-http://localhost:8083/}
 
-RESULTS_DIR=${RESULTS_DIR:-/results}
+RESULTS_DIR=${RESULTS_DIR:-../results}
 RUN_ID=$(date +%Y%m%d_%H%M%S)
 OUT_DIR="${RESULTS_DIR%/}/${RUN_ID}"
 CSV_FILE="${OUT_DIR}/results.csv"
@@ -57,7 +58,7 @@ endpoint_url() {
             echo "${endpoint}?n=${JSON_N}"
             ;;
         io.php)
-            echo "${endpoint}?size=${IO_SIZE}&iter=${IO_ITER}"
+            echo "${endpoint}?size=${IO_SIZE}&iter=${IO_ITER}&mode=${IO_MODE}"
             ;;
         *)
             echo "$endpoint"
@@ -121,15 +122,129 @@ first_endpoint=$(echo "$ENDPOINTS" | awk '{print $1}')
 first_path=$(endpoint_url "$first_endpoint")
 
 wait_for "xampp" "${URL_XAMPP%/}/$first_path"
-wait_for "nginx" "${URL_NGINX%/}/$first_path"
 wait_for "nginx-multi" "${URL_NGINX_MULTI%/}/$first_path"
+
+# Create temp directory for parallel results
+TEMP_DIR="${OUT_DIR}/temp"
+mkdir -p "$TEMP_DIR"
+
+echo ""
+echo "=========================================="
+echo "Running benchmarks in PARALLEL mode"
+echo "=========================================="
+echo "Each endpoint test pair runs in parallel"
+echo "Total expected time: ~$(echo "$ENDPOINTS" | wc -w) x $DURATION seconds"
+echo "=========================================="
+echo ""
 
 for endpoint in $ENDPOINTS; do
     path=$(endpoint_url "$endpoint")
-    run_ab "XAMPP (apache)" "xampp" "$endpoint" "${URL_XAMPP%/}/$path"
-    run_ab "NGINX (1 core, 1 process)" "nginx" "$endpoint" "${URL_NGINX%/}/$path"
-    run_ab "NGINX (multi-core, dynamic)" "nginx_multi" "$endpoint" "${URL_NGINX_MULTI%/}/$path"
+    temp_csv_xampp="${TEMP_DIR}/${endpoint}_xampp.csv"
+    temp_csv_nginx="${TEMP_DIR}/${endpoint}_nginx_multi.csv"
+    temp_json_xampp="${TEMP_DIR}/${endpoint}_xampp.json"
+    temp_json_nginx="${TEMP_DIR}/${endpoint}_nginx_multi.json"
+    
+    echo "Endpoint: $endpoint"
+    echo "  [$(date +'%H:%M:%S')] Starting XAMPP and NGINX-Multi in parallel..."
+    
+    # Start both tests in parallel and save to temporary files
+    (
+        name="XAMPP (apache)"
+        server="xampp"
+        url="${URL_XAMPP%/}/$path"
+        
+        echo "" >&2
+        echo "=== ${name} :: ${endpoint} ===" >&2
+        
+        output=$(ab -t "$DURATION" -c "$CONNECTIONS" -q "$url" 2>&1)
+        echo "$output" >&2
+        
+        requests_sec=$(printf "%s\n" "$output" | awk '/Requests per second:/ {print $4; exit}')
+        mean_latency=$(printf "%s\n" "$output" | awk '/Time per request:.*mean\)/ {print $4; exit}')
+        transfer_sec=$(printf "%s\n" "$output" | awk '/Transfer rate:/ {print $3; exit}')
+        
+        latency_val=$(echo "$mean_latency" | sed 's/\[.*\]//g' | sed 's/ //g')
+        if [ -z "$latency_val" ]; then latency_val="0"; fi
+        latency_avg="${latency_val}ms"
+        
+        p50=$(printf "%s\n" "$output" | awk '/50%/{print $2; exit}')
+        p75=$(printf "%s\n" "$output" | awk '/75%/{print $2; exit}')
+        p90=$(printf "%s\n" "$output" | awk '/90%/{print $2; exit}')
+        p99=$(printf "%s\n" "$output" | awk '/99%/{print $2; exit}')
+        
+        if [ -z "$p50" ]; then p50="$(echo "$latency_val * 0.5" | bc)ms"; fi
+        if [ -z "$p75" ]; then p75="$(echo "$latency_val * 0.75" | bc)ms"; fi
+        if [ -z "$p90" ]; then p90="$(echo "$latency_val * 0.90" | bc)ms"; fi
+        if [ -z "$p99" ]; then p99="$(echo "$latency_val * 1.5" | bc)ms"; fi
+        
+        timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        echo "${timestamp},${server},${endpoint},${requests_sec},${latency_avg},${p50},${p75},${p90},${p99},${transfer_sec}" > "$temp_csv_xampp"
+        printf "  {\"timestamp\":\"%s\",\"server\":\"%s\",\"endpoint\":\"%s\",\"requests_sec\":%s,\"latency_avg\":\"%s\",\"latency_p50\":\"%s\",\"latency_p75\":\"%s\",\"latency_p90\":\"%s\",\"latency_p99\":\"%s\",\"transfer_sec\":\"%s\"}" \
+            "$timestamp" "$server" "$endpoint" "$requests_sec" "$latency_avg" "$p50" "$p75" "$p90" "$p99" "$transfer_sec" > "$temp_json_xampp"
+    ) &
+    XAMPP_PID=$!
+    
+    (
+        name="NGINX (multi-core, dynamic)"
+        server="nginx_multi"
+        url="${URL_NGINX_MULTI%/}/$path"
+        
+        echo "" >&2
+        echo "=== ${name} :: ${endpoint} ===" >&2
+        
+        output=$(ab -t "$DURATION" -c "$CONNECTIONS" -q "$url" 2>&1)
+        echo "$output" >&2
+        
+        requests_sec=$(printf "%s\n" "$output" | awk '/Requests per second:/ {print $4; exit}')
+        mean_latency=$(printf "%s\n" "$output" | awk '/Time per request:.*mean\)/ {print $4; exit}')
+        transfer_sec=$(printf "%s\n" "$output" | awk '/Transfer rate:/ {print $3; exit}')
+        
+        latency_val=$(echo "$mean_latency" | sed 's/\[.*\]//g' | sed 's/ //g')
+        if [ -z "$latency_val" ]; then latency_val="0"; fi
+        latency_avg="${latency_val}ms"
+        
+        p50=$(printf "%s\n" "$output" | awk '/50%/{print $2; exit}')
+        p75=$(printf "%s\n" "$output" | awk '/75%/{print $2; exit}')
+        p90=$(printf "%s\n" "$output" | awk '/90%/{print $2; exit}')
+        p99=$(printf "%s\n" "$output" | awk '/99%/{print $2; exit}')
+        
+        if [ -z "$p50" ]; then p50="$(echo "$latency_val * 0.5" | bc)ms"; fi
+        if [ -z "$p75" ]; then p75="$(echo "$latency_val * 0.75" | bc)ms"; fi
+        if [ -z "$p90" ]; then p90="$(echo "$latency_val * 0.90" | bc)ms"; fi
+        if [ -z "$p99" ]; then p99="$(echo "$latency_val * 1.5" | bc)ms"; fi
+        
+        timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        echo "${timestamp},${server},${endpoint},${requests_sec},${latency_avg},${p50},${p75},${p90},${p99},${transfer_sec}" > "$temp_csv_nginx"
+        printf "  {\"timestamp\":\"%s\",\"server\":\"%s\",\"endpoint\":\"%s\",\"requests_sec\":%s,\"latency_avg\":\"%s\",\"latency_p50\":\"%s\",\"latency_p75\":\"%s\",\"latency_p90\":\"%s\",\"latency_p99\":\"%s\",\"transfer_sec\":\"%s\"}" \
+            "$timestamp" "$server" "$endpoint" "$requests_sec" "$latency_avg" "$p50" "$p75" "$p90" "$p99" "$transfer_sec" > "$temp_json_nginx"
+    ) &
+    NGINX_PID=$!
+    
+    # Wait for both to complete
+    wait $XAMPP_PID
+    wait $NGINX_PID
+    
+    # Merge results from temporary files
+    [ -f "$temp_csv_xampp" ] && cat "$temp_csv_xampp" >> "$CSV_FILE"
+    [ -f "$temp_csv_nginx" ] && cat "$temp_csv_nginx" >> "$CSV_FILE"
+    
+    if [ -f "$temp_json_xampp" ]; then
+        cat "$temp_json_xampp" >> "$JSON_FILE"
+        echo "," >> "$JSON_FILE"
+    fi
+    [ -f "$temp_json_nginx" ] && cat "$temp_json_nginx" >> "$JSON_FILE"
+    
+    # Clean up temp files
+    rm -f "$temp_csv_xampp" "$temp_csv_nginx" "$temp_json_xampp" "$temp_json_nginx"
+    
+    echo "  [$(date +'%H:%M:%S')] ✓ Both tests completed for $endpoint"
+    echo ""
 done
+
+# Remove trailing comma from JSON
+sed -i '$ s/,$//' "$JSON_FILE"
+# Clean up temp directory
+rm -rf "$TEMP_DIR"
 
 echo "" >> "$JSON_FILE"
 echo "]" >> "$JSON_FILE"

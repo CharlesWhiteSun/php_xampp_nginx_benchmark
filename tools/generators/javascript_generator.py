@@ -194,7 +194,7 @@ class JavaScriptGenerator:
     }
 
     window.addEventListener('load', () => {
-      const saved = window.localStorage.getItem('report_lang') || 'zh';
+      const saved = window.localStorage.getItem('report_lang') || 'en';
       applyLang(saved);
       document.querySelectorAll('.lang-btn').forEach((btn) => {
         btn.addEventListener('click', () => {

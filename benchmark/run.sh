@@ -7,15 +7,16 @@ THREADS=${THREADS:-2}
 WARMUP=${WARMUP:-2s}
 ITER=${ITER:-10000}
 JSON_N=${JSON_N:-2000}
-IO_SIZE=${IO_SIZE:-32768}
-IO_ITER=${IO_ITER:-50}
+IO_SIZE=${IO_SIZE:-8192}
+IO_ITER=${IO_ITER:-20}
+IO_MODE=${IO_MODE:-memory}
 ENDPOINTS=${ENDPOINTS:-"cpu.php json.php io.php"}
 
-URL_XAMPP=${URL_XAMPP:-http://xampp/}
-URL_NGINX=${URL_NGINX:-http://nginx/}
-URL_NGINX_MULTI=${URL_NGINX_MULTI:-http://nginx-multi/}
+URL_XAMPP=${URL_XAMPP:-http://localhost:8081/}
+URL_NGINX=${URL_NGINX:-http://localhost:8082/}
+URL_NGINX_MULTI=${URL_NGINX_MULTI:-http://localhost:8083/}
 
-RESULTS_DIR=${RESULTS_DIR:-/results}
+RESULTS_DIR=${RESULTS_DIR:-../results}
 RUN_ID=$(date +%Y%m%d_%H%M%S)
 OUT_DIR="${RESULTS_DIR%/}/${RUN_ID}"
 CSV_FILE="${OUT_DIR}/results.csv"
@@ -50,7 +51,7 @@ endpoint_url() {
             echo "${endpoint}?n=${JSON_N}"
             ;;
         io.php)
-            echo "${endpoint}?size=${IO_SIZE}&iter=${IO_ITER}"
+            echo "${endpoint}?size=${IO_SIZE}&iter=${IO_ITER}&mode=${IO_MODE}"
             ;;
         *)
             echo "$endpoint"
