@@ -203,19 +203,6 @@ class CSSGenerator:
       border-collapse: collapse;
       font-size: 14px;
     }
-    .table-responsive {
-      width: 100%;
-      overflow-x: auto;
-      overflow-y: visible;
-      -webkit-overflow-scrolling: touch;
-      border-radius: 8px;
-    }
-    .table-responsive table {
-      margin: 0;
-    }
-    table.report-table {
-      min-width: 520px;
-    }
     th, td {
       border-bottom: 1px solid #1f3c3f;
       padding: 8px;

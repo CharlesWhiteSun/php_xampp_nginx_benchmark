@@ -194,12 +194,12 @@ class InterpretationBuilder:
             # Find winners with display names
             req_values = {}
             if x: req_values["XAMPP"] = x.requests_sec
-            if nm: req_values["NGINX (Multi-core)"] = nm.requests_sec
+            if nm: req_values["NGINX"] = nm.requests_sec
             req_winner = max(req_values, key=req_values.get) if req_values else "N/A"
             
             lat_values = {}
             if x: lat_values["XAMPP"] = x.latency_ms
-            if nm: lat_values["NGINX (Multi-core)"] = nm.latency_ms
+            if nm: lat_values["NGINX"] = nm.latency_ms
             lat_winner = min(lat_values, key=lat_values.get) if lat_values else "N/A"
             
             # Calculate performance deltas for additional context

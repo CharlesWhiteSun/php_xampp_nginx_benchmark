@@ -455,7 +455,7 @@ class RawResultsSection:
         </div>
 
         <div style="margin-top: 24px;">
-          <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #64b5f6;">NGINX (Multi-core)</h3>
+          <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #64b5f6;">NGINX</h3>
           <table>
             <thead>
               <tr>

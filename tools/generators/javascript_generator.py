@@ -28,19 +28,19 @@ class JavaScriptGenerator:
 
     const reqData = [
       { type: 'bar', name: 'XAMPP', x: payload.charts.requests_sec.labels, y: payload.charts.requests_sec.xampp, marker: { color: '#f2b264' } },
-      { type: 'bar', name: 'NGINX (Multi)', x: payload.charts.requests_sec.labels, y: payload.charts.requests_sec.nginx_multi, marker: { color: '#64b5f6' } },
+      { type: 'bar', name: 'NGINX', x: payload.charts.requests_sec.labels, y: payload.charts.requests_sec.nginx_multi, marker: { color: '#64b5f6' } },
     ];
     Plotly.newPlot('chart-req', reqData, { barmode: 'group', paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#e7f4f2' }, xaxis: { tickangle: -45, automargin: true, tickfont: { size: 12 } }, yaxis: { tickformat: '.1f', ticksuffix: 'k' }, margin: { b: 80 } });
 
     const latData = [
       { type: 'bar', name: 'XAMPP', x: payload.charts.latency_ms.labels, y: payload.charts.latency_ms.xampp, marker: { color: '#f2b264' } },
-      { type: 'bar', name: 'NGINX (Multi)', x: payload.charts.latency_ms.labels, y: payload.charts.latency_ms.nginx_multi, marker: { color: '#64b5f6' } },
+      { type: 'bar', name: 'NGINX', x: payload.charts.latency_ms.labels, y: payload.charts.latency_ms.nginx_multi, marker: { color: '#64b5f6' } },
     ];
     Plotly.newPlot('chart-lat', latData, { barmode: 'group', paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#e7f4f2' }, xaxis: { tickangle: -45, automargin: true, tickfont: { size: 12 } }, yaxis: { tickformat: '.1f', ticksuffix: 'k' }, margin: { b: 80 } });
 
     const xferData = [
       { type: 'bar', name: 'XAMPP', x: payload.charts.transfer_kb_sec.labels, y: payload.charts.transfer_kb_sec.xampp, marker: { color: '#f2b264' } },
-      { type: 'bar', name: 'NGINX (Multi)', x: payload.charts.transfer_kb_sec.labels, y: payload.charts.transfer_kb_sec.nginx_multi, marker: { color: '#64b5f6' } },
+      { type: 'bar', name: 'NGINX', x: payload.charts.transfer_kb_sec.labels, y: payload.charts.transfer_kb_sec.nginx_multi, marker: { color: '#64b5f6' } },
     ];
     Plotly.newPlot('chart-xfer', xferData, { barmode: 'group', paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#e7f4f2' }, xaxis: { tickangle: -45, automargin: true, tickfont: { size: 12 } }, yaxis: { tickformat: '.1f', ticksuffix: 'k' }, margin: { b: 80 } });
 
@@ -48,9 +48,9 @@ class JavaScriptGenerator:
       { type: 'bar', name: 'XAMPP p50', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.xampp.p50, marker: { color: 'rgba(242,178,100,0.65)' } },
       { type: 'bar', name: 'XAMPP p90', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.xampp.p90, marker: { color: 'rgba(242,178,100,0.85)' } },
       { type: 'bar', name: 'XAMPP p99', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.xampp.p99, marker: { color: 'rgba(242,178,100,1.0)' } },
-      { type: 'bar', name: 'NGINX Multi p50', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx_multi.p50, marker: { color: 'rgba(100,181,246,0.65)' } },
-      { type: 'bar', name: 'NGINX Multi p90', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx_multi.p90, marker: { color: 'rgba(100,181,246,0.85)' } },
-      { type: 'bar', name: 'NGINX Multi p99', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx_multi.p99, marker: { color: 'rgba(100,181,246,1.0)' } },
+      { type: 'bar', name: 'NGINX p50', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx_multi.p50, marker: { color: 'rgba(100,181,246,0.65)' } },
+      { type: 'bar', name: 'NGINX p90', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx_multi.p90, marker: { color: 'rgba(100,181,246,0.85)' } },
+      { type: 'bar', name: 'NGINX p99', x: payload.charts.latency_pctl.labels, y: payload.charts.latency_pctl.nginx_multi.p99, marker: { color: 'rgba(100,181,246,1.0)' } },
     ];
     if (payload.has_pctl) {
       Plotly.newPlot('chart-pctl', pctlData, { barmode: 'group', paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: { color: '#e7f4f2' }, xaxis: { tickangle: -45, automargin: true, tickfont: { size: 12 }, standoff: 10 }, yaxis: { tickformat: '.1f', ticksuffix: 'ms' }, margin: { b: 120, l: 60, r: 40, t: 40 } });
@@ -73,7 +73,7 @@ class JavaScriptGenerator:
       },
       {
         type: 'violin',
-        name: 'NGINX (Multi)',
+        name: 'NGINX',
         y: payload.hist_requests.nginx_multi,
         box: { visible: true },
         meanline: { visible: true },
@@ -103,7 +103,7 @@ class JavaScriptGenerator:
       {
         type: 'scatter',
         mode: 'lines+markers',
-        name: 'NGINX (Multi)',
+        name: 'NGINX',
         x: payload.charts.requests_sec.labels,
         y: payload.charts.requests_sec.nginx_multi,
         line: { color: '#64b5f6', width: 3 },
@@ -145,21 +145,7 @@ class JavaScriptGenerator:
           return;
         }
 
-        table.classList.add('report-table', 'table-resizable');
-
-        const colCount = table.querySelectorAll('thead th').length || (table.rows[0] ? table.rows[0].cells.length : 0);
-        if (!table.style.minWidth) {
-          const preferredWidth = Math.max(680, Math.min(1400, colCount * 170));
-          table.style.minWidth = preferredWidth + 'px';
-        }
-
-        const parent = table.parentElement;
-        if (!parent || !parent.classList.contains('table-responsive')) {
-          const wrapper = document.createElement('div');
-          wrapper.className = 'table-responsive';
-          table.parentNode.insertBefore(wrapper, table);
-          wrapper.appendChild(table);
-        }
+        table.classList.add('table-resizable');
       });
     }
 
