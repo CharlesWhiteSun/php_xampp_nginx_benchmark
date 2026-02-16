@@ -41,11 +41,10 @@ services:
       - nginx-multi
     volumes:
       - ./results:/results
+      - ./benchmark/run_ab.sh:/usr/local/bin/run.sh:ro
+    # Environment variables - DURATION, CONNECTIONS, etc. can be overridden via docker-compose run -e flag
     environment:
       URL_XAMPP: http://xampp/
       URL_NGINX: http://nginx/
       URL_NGINX_MULTI: http://nginx-multi/
-      DURATION: 10s
-      CONNECTIONS: "50"
-      THREADS: "2"
       ITER: "10000"

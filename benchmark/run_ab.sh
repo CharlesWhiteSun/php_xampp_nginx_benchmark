@@ -3,6 +3,7 @@ set -eu
 
 DURATION=${DURATION:-10}
 CONNECTIONS=${CONNECTIONS:-50}
+MAX_REQUESTS=${MAX_REQUESTS:-1000000000}
 ITER=${ITER:-10000}
 JSON_N=${JSON_N:-2000}
 IO_SIZE=${IO_SIZE:-8192}
@@ -56,10 +57,10 @@ CONFIGEOF
 # Replace placeholders with actual values
 sed -i "s/DURATION_VAL/$DURATION/g" "$CONFIG_FILE"
 sed -i "s/CONNECTIONS_VAL/$CONNECTIONS/g" "$CONFIG_FILE"
+sed -i "s/IO_ITER_VAL/$IO_ITER/g" "$CONFIG_FILE"
 sed -i "s/ITER_VAL/$ITER/g" "$CONFIG_FILE"
 sed -i "s/JSON_N_VAL/$JSON_N/g" "$CONFIG_FILE"
 sed -i "s/IO_SIZE_VAL/$IO_SIZE/g" "$CONFIG_FILE"
-sed -i "s/IO_ITER_VAL/$IO_ITER/g" "$CONFIG_FILE"
 sed -i "s/IO_MODE_VAL/$IO_MODE/g" "$CONFIG_FILE"
 sed -i "s/TEST_TIME_VAL/$(date -u +%Y-%m-%dT%H:%M:%SZ)/g" "$CONFIG_FILE"
 
@@ -113,7 +114,7 @@ run_ab() {
     echo "=== ${name} :: ${endpoint} ==="
     
     # Run ab test with full output
-    output=$(ab -t "$DURATION" -c "$CONNECTIONS" -q "$url" 2>&1)
+    output=$(ab -n "$MAX_REQUESTS" -t "$DURATION" -c "$CONNECTIONS" -q "$url" 2>&1)
     echo "$output"
 
     # Extract metrics from ab output
@@ -194,7 +195,7 @@ for endpoint in $ENDPOINTS; do
         echo "" >&2
         echo "=== ${name} :: ${endpoint} ===" >&2
         
-        output=$(ab -t "$DURATION" -c "$CONNECTIONS" -q "$url" 2>&1)
+        output=$(ab -n "$MAX_REQUESTS" -t "$DURATION" -c "$CONNECTIONS" -q "$url" 2>&1)
         echo "$output" >&2
         
         requests_sec=$(printf "%s\n" "$output" | awk '/Requests per second:/ {print $4; exit}')
@@ -230,7 +231,7 @@ for endpoint in $ENDPOINTS; do
         echo "" >&2
         echo "=== ${name} :: ${endpoint} ===" >&2
         
-        output=$(ab -t "$DURATION" -c "$CONNECTIONS" -q "$url" 2>&1)
+        output=$(ab -n "$MAX_REQUESTS" -t "$DURATION" -c "$CONNECTIONS" -q "$url" 2>&1)
         echo "$output" >&2
         
         requests_sec=$(printf "%s\n" "$output" | awk '/Requests per second:/ {print $4; exit}')
