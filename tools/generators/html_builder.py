@@ -195,6 +195,20 @@ class CSSGenerator:
       border-color: rgba(242, 178, 100, 0.45);
       background: rgba(242, 178, 100, 0.12);
     }
+    .report-view-btn {
+      border: 1px solid #1f3c3f;
+      background: rgba(109, 211, 182, 0.08);
+      color: var(--muted);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .report-view-btn.active {
+      color: var(--accent);
+      border-color: rgba(109, 211, 182, 0.45);
+      background: rgba(109, 211, 182, 0.15);
+    }
     .plot {
       height: 320px;
     }

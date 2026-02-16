@@ -322,15 +322,6 @@ class JavaScriptGenerator:
         note.style.display = 'block';
       }
 
-      const list = document.getElementById('interpretation-list');
-      const endpointColors = { 'cpu': '#f2b264', 'io': '#a7c8c2', 'json': '#6dd3b6' };
-      list.innerHTML = payload.interpretations[lang]
-        .map((item) => {
-          const color = endpointColors[item.endpoint_type] || '#b0b0b0';
-          return `<tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);"><td style="padding: 12px; color: ${color}; font-weight: 600; font-size: 13px;">${item.endpoint}</td><td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;">${item.finding || ''}</td><td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;">${item.text}</td></tr>`;
-        })
-        .join('');
-
       document.querySelectorAll('.lang-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.lang === lang);
       });
@@ -345,6 +336,26 @@ class JavaScriptGenerator:
       }
 
       initializeTables();
+    }
+
+    function applyReportView(view) {
+      const nextView = (view === 'sre') ? 'sre' : 'business';
+      document.querySelectorAll('.report-view-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.reportView === nextView);
+      });
+
+      document.querySelectorAll('.report-view-content').forEach((el) => {
+        const isBusiness = el.classList.contains('report-view-business');
+        const isSre = el.classList.contains('report-view-sre');
+
+        if ((nextView === 'business' && isBusiness) || (nextView === 'sre' && isSre)) {
+          el.style.display = '';
+        } else {
+          el.style.display = 'none';
+        }
+      });
+
+      window.localStorage.setItem('report_view', nextView);
     }
 
     window.addEventListener('load', () => {
@@ -362,6 +373,14 @@ class JavaScriptGenerator:
       document.querySelectorAll('.theme-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           applyTheme(btn.dataset.theme);
+        });
+      });
+
+      const savedView = window.localStorage.getItem('report_view') || 'business';
+      applyReportView(savedView);
+      document.querySelectorAll('.report-view-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          applyReportView(btn.dataset.reportView);
         });
       });
     });"""

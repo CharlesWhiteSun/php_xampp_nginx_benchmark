@@ -9,7 +9,7 @@ from loaders.csv_loader import CSVLoader, CSVFinder
 from processors.data_processor import ChartDataProcessor, HistogramDataProcessor, InsightBuilder, InterpretationBuilder
 from generators.html_builder import CSSGenerator, HTMLStructureBuilder
 from generators.javascript_generator import JavaScriptGenerator
-from generators.html_sections import EndpointsSection, FormulasSection, ChartsGridSection, InsightsTable, InterpretationSection, EndpointAnalysisSection, RawResultsSection, ParametersSection, SummarySection
+from generators.html_sections import EndpointsSection, FormulasSection, ChartsGridSection, BenchmarkReportSection, InterpretationSection, RawResultsSection, ParametersSection, SummarySection
 from i18n.texts import get_text
 
 
@@ -119,9 +119,8 @@ class ReportGenerator:
         raw_results_html = RawResultsSection.build(rows)
         formulas_html = FormulasSection.build()
         charts_html = ChartsGridSection.build()
-        insights_html = InsightsTable.build([self._insight_to_dict(i) for i in insights])
+        benchmark_report_html = BenchmarkReportSection.build([self._insight_to_dict(i) for i in insights])
         interpretation_html = InterpretationSection.build()
-        endpoint_analysis_html = EndpointAnalysisSection.build()
         
         return f"""{params_html}
 
@@ -137,9 +136,7 @@ class ReportGenerator:
 
 {charts_html}
 
-{insights_html}
-
-{endpoint_analysis_html}"""
+{benchmark_report_html}"""
     
     def _get_html_template(self) -> str:
         """Get HTML template with placeholders."""

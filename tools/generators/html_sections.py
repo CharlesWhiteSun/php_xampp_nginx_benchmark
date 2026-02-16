@@ -345,6 +345,338 @@ class InsightsTable:
     </div>"""
 
 
+class BenchmarkReportSection:
+    """Builds consolidated benchmark report section from insights and endpoint analysis."""
+
+    @staticmethod
+    def build(insights: List[Dict[str, Any]]) -> str:
+        """Build consolidated benchmark report section HTML."""
+
+        def format_server_name(name: str) -> str:
+            if "xampp" in name.lower():
+                return "XAMPP"
+            if "nginx" in name.lower():
+                return "NGINX"
+            return name.upper()
+
+        throughput_xampp = 0
+        throughput_nginx = 0
+        latency_xampp = 0
+        latency_nginx = 0
+        req_deltas = []
+        lat_deltas = []
+
+        scenario_map = {
+          "CPU": "Laravel Queue / 批次工作（排程、匯整、背景任務）",
+          "JSON": "Laravel API / 控制器回應（即時 API 與前後端互動）",
+          "I/O": "Laravel DB + Storage（查詢、檔案存取、快取互動）",
+        }
+        endpoint_profiles = {
+          "CPU": {
+            "business": {
+              "same_diff": "{winner} 在 CPU 端點同時取得吞吐 {req_chip} 與延遲 {lat_chip} 優勢，代表在計算型工作負載具一致效益。",
+              "split_diff": "CPU 端點有明顯取捨：{req_winner} 吞吐較高 {req_chip}、{lat_winner} 延遲較低 {lat_chip}，需依工作型態分流。",
+              "same_deploy": "批次報表、排程匯整、背景運算優先部署於 {winner}，可在單一平台放大 CPU 成本效益。",
+              "split_deploy": "長批次與高併發計算流量走 {req_winner}；需要即時回應的同步流程走 {lat_winner}。",
+            },
+            "sre": {
+              "same_diff": "{winner} 在 CPU 端點雙指標同向領先（吞吐 {req_chip} / 延遲 {lat_chip}），顯示 PHP worker 調度、Opcode 命中與執行器排程更穩定。",
+              "split_diff": "CPU 路徑分裂：{req_winner} 在 worker 併發吞吐領先 {req_chip}，{lat_winner} 在短請求路徑延遲領先 {lat_chip}，反映執行佇列與排程策略差異。",
+              "same_deploy": "Queue/Horizon/排程 Worker 佈署在 {winner}，並優先調整 process manager、worker 數與 max execution time。",
+              "split_deploy": "將 batch worker pool 固定於 {req_winner}，interactive sync route 置於 {lat_winner}，分別調整 worker class 與 timeout profile。",
+            },
+          },
+          "JSON": {
+            "business": {
+              "same_diff": "{winner} 在 JSON 端點同向領先（吞吐 {req_chip}、延遲 {lat_chip}），對 API 服務可同時提升容量與體感速度。",
+              "split_diff": "JSON 端點呈雙向優勢：{req_winner} 併發吞吐較強 {req_chip}，{lat_winner} 互動延遲較佳 {lat_chip}。",
+              "same_deploy": "API 與前後端資料交換流量優先部署於 {winner}，可同時降低尖峰壓力與等待時間。",
+              "split_deploy": "大流量資料輸出、批次 API 走 {req_winner}；登入、交易、互動型 API 走 {lat_winner}。",
+            },
+            "sre": {
+              "same_diff": "{winner} 在 JSON 端點雙指標領先（吞吐 {req_chip} / 延遲 {lat_chip}），顯示序列化鏈路、FastCGI 緩衝與回應 flush path 較佳。",
+              "split_diff": "JSON 路徑出現 trade-off：{req_winner} 在 payload throughput 佔優 {req_chip}，{lat_winner} 在 request turnaround 佔優 {lat_chip}。",
+              "same_deploy": "將 API gateway/serialization-heavy controller 置於 {winner}，並強化 keep-alive、gzip 與 response buffer 策略。",
+              "split_deploy": "bulk payload endpoint 走 {req_winner}，latency-sensitive endpoint 走 {lat_winner}；以 route-based upstream policy 分流。",
+            },
+          },
+          "I/O": {
+            "business": {
+              "same_diff": "{winner} 在 I/O 端點同時領先（吞吐 {req_chip}、延遲 {lat_chip}），適合資料存取與檔案服務主路徑。",
+              "split_diff": "I/O 端點出現取捨：{req_winner} 吞吐較高 {req_chip}、{lat_winner} 延遲較低 {lat_chip}。",
+              "same_deploy": "資料查詢、檔案存取、匯入匯出流程優先部署於 {winner}，降低維運複雜度。",
+              "split_deploy": "背景同步、批次寫入走 {req_winner}；交易查詢、即時讀取走 {lat_winner}。",
+            },
+            "sre": {
+              "same_diff": "{winner} 在 I/O 端點雙指標同向領先（吞吐 {req_chip} / 延遲 {lat_chip}），顯示 connection reuse、pool 行為與 I/O queue 控管較佳。",
+              "split_diff": "I/O 端點分裂：{req_winner} 在 queue depth 吞吐表現領先 {req_chip}，{lat_winner} 在 tail latency 表現領先 {lat_chip}。",
+              "same_deploy": "DB/storage-heavy route 佈署於 {winner}，集中調整 connection pool、read/write timeout 與 cache TTL。",
+              "split_deploy": "write-heavy 與 background sync upstream 指向 {req_winner}；read-heavy 與 latency-critical upstream 指向 {lat_winner}。",
+            },
+          },
+        }
+        endpoint_color_map = {
+          "CPU": "#f2b264",
+          "JSON": "#6dd3b6",
+          "I/O": "#a7c8c2",
+        }
+
+        def render_percent_chip(percent_value: float, chip_class: str = "metric-high") -> str:
+          return f'<span class="metric-chip {chip_class}" style="vertical-align: middle;">{abs(percent_value):.1f}%</span>'
+
+        matrix_rows = ""
+        for item in insights:
+          endpoint_label = format_endpoint_label(item["endpoint"])
+          req_winner = format_server_name(item["req_winner"])
+          lat_winner = format_server_name(item["lat_winner"])
+          req_delta = item["req_delta"]
+          lat_delta = item["lat_delta"]
+
+          req_deltas.append(req_delta)
+          lat_deltas.append(lat_delta)
+
+          if req_winner == "XAMPP":
+            throughput_xampp += 1
+          elif req_winner == "NGINX":
+            throughput_nginx += 1
+
+          if lat_winner == "XAMPP":
+            latency_xampp += 1
+          elif lat_winner == "NGINX":
+            latency_nginx += 1
+
+          throughput_compare = f"{req_winner} 較優 {render_percent_chip(req_delta, 'metric-high')}"
+          latency_compare = f"{lat_winner} 較優 {render_percent_chip(lat_delta, 'metric-high')}"
+
+          endpoint_profile = endpoint_profiles.get(endpoint_label, endpoint_profiles["JSON"])
+          req_chip = render_percent_chip(req_delta, "metric-high")
+          lat_chip = render_percent_chip(lat_delta, "metric-high")
+
+          if req_winner == lat_winner:
+            business_conclusion = endpoint_profile["business"]["same_diff"].format(
+              winner=req_winner,
+              req_chip=req_chip,
+              lat_chip=lat_chip,
+            )
+            sre_conclusion = endpoint_profile["sre"]["same_diff"].format(
+              winner=req_winner,
+              req_chip=req_chip,
+              lat_chip=lat_chip,
+            )
+            business_deploy = endpoint_profile["business"]["same_deploy"].format(winner=req_winner)
+            sre_deploy = endpoint_profile["sre"]["same_deploy"].format(winner=req_winner)
+          else:
+            business_conclusion = endpoint_profile["business"]["split_diff"].format(
+              req_winner=req_winner,
+              lat_winner=lat_winner,
+              req_chip=req_chip,
+              lat_chip=lat_chip,
+            )
+            sre_conclusion = endpoint_profile["sre"]["split_diff"].format(
+              req_winner=req_winner,
+              lat_winner=lat_winner,
+              req_chip=req_chip,
+              lat_chip=lat_chip,
+            )
+            business_deploy = endpoint_profile["business"]["split_deploy"].format(
+              req_winner=req_winner,
+              lat_winner=lat_winner,
+            )
+            sre_deploy = endpoint_profile["sre"]["split_deploy"].format(
+              req_winner=req_winner,
+              lat_winner=lat_winner,
+            )
+
+          matrix_rows += (
+            f'<tr>'
+            f'<td style="padding: 12px; color: {endpoint_color_map.get(endpoint_label, "var(--text)")}; font-weight: 600;">{endpoint_label}</td>'
+            f'<td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;">{scenario_map.get(endpoint_label, "Laravel 一般工作負載")}</td>'
+            f'<td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;">{throughput_compare}</td>'
+            f'<td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;">{latency_compare}</td>'
+            f'<td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;">'
+            f'<div class="report-view-content report-view-business">{business_conclusion}</div>'
+            f'<div class="report-view-content report-view-sre" style="display:none;">{sre_conclusion}</div>'
+            f'</td>'
+            f'<td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;">'
+            f'<div class="report-view-content report-view-business">{business_deploy}</div>'
+            f'<div class="report-view-content report-view-sre" style="display:none;">{sre_deploy}</div>'
+            f'</td>'
+            f'</tr>'
+          )
+
+        avg_req_delta = sum(req_deltas) / len(req_deltas) if req_deltas else 0.0
+        avg_lat_delta = sum(lat_deltas) / len(lat_deltas) if lat_deltas else 0.0
+
+        if avg_req_delta > 0:
+          overall_throughput = f"XAMPP 平均領先 {render_percent_chip(avg_req_delta, 'metric-high')}"
+        elif avg_req_delta < 0:
+          overall_throughput = f"NGINX 平均領先 {render_percent_chip(avg_req_delta, 'metric-high')}"
+        else:
+          overall_throughput = "吞吐表現接近"
+
+        if avg_lat_delta > 0:
+          overall_latency = f"NGINX 平均延遲較低 {render_percent_chip(avg_lat_delta, 'metric-high')}"
+        elif avg_lat_delta < 0:
+          overall_latency = f"XAMPP 平均延遲較低 {render_percent_chip(avg_lat_delta, 'metric-high')}"
+        else:
+          overall_latency = "延遲表現接近"
+
+        def render_score_pair(xampp_value: int, nginx_value: int) -> str:
+          if xampp_value > nginx_value:
+            xampp_chip_class = "metric-chip metric-high"
+            nginx_chip_class = "metric-chip metric-low"
+          elif xampp_value < nginx_value:
+            xampp_chip_class = "metric-chip metric-low"
+            nginx_chip_class = "metric-chip metric-high"
+          else:
+            xampp_chip_class = "metric-chip metric-compare"
+            nginx_chip_class = "metric-chip metric-compare"
+
+          return (
+            f'XAMPP: <span class="{xampp_chip_class}" style="vertical-align: middle;">{xampp_value}</span> '
+            f'/ NGINX: <span class="{nginx_chip_class}" style="vertical-align: middle;">{nginx_value}</span>'
+          )
+
+        throughput_score_display = render_score_pair(throughput_xampp, throughput_nginx)
+        latency_score_display = render_score_pair(latency_xampp, latency_nginx)
+
+        xampp_score = throughput_xampp + latency_xampp
+        nginx_score = throughput_nginx + latency_nginx
+        score_gap = abs(nginx_score - xampp_score)
+        delta_signal = max(abs(avg_req_delta), abs(avg_lat_delta))
+
+        if nginx_score > xampp_score:
+          final_recommend_business = "建議優先採用 NGINX 作為 Laravel 生產環境，XAMPP 保留於開發與相容驗證。"
+          final_recommend_sre = f"建議生產流量主路徑使用 NGINX（總分 {nginx_score} 對 {xampp_score}），XAMPP 保留在開發/回歸驗證節點。"
+        elif xampp_score > nginx_score:
+          final_recommend_business = "目前數據偏向 XAMPP，但建議先以 NGINX 進行長時壓測再定案。"
+          final_recommend_sre = f"目前 XAMPP 總分領先（{xampp_score} 對 {nginx_score}），但建議補做長時與尖峰壓測，確認 NGINX 調校後再決策。"
+        else:
+          final_recommend_business = "兩者各有優勢，建議依端點特性分流部署並持續監測。"
+          final_recommend_sre = f"總分持平（XAMPP {xampp_score} / NGINX {nginx_score}），建議採 route-based upstream 分流並以 APM 持續觀測 tail latency。"
+
+        if score_gap >= 3 or (score_gap >= 2 and delta_signal >= 10):
+          confidence_basis_chip_class = "metric-high"
+        elif score_gap >= 1 or delta_signal >= 5:
+          confidence_basis_chip_class = "metric-compare"
+        else:
+          confidence_basis_chip_class = "metric-low"
+
+        if xampp_score > nginx_score:
+          xampp_score_chip_class = "metric-high"
+          nginx_score_chip_class = "metric-low"
+        elif xampp_score < nginx_score:
+          xampp_score_chip_class = "metric-low"
+          nginx_score_chip_class = "metric-high"
+        else:
+          xampp_score_chip_class = "metric-compare"
+          nginx_score_chip_class = "metric-compare"
+
+        xampp_score_display = f'<span class="metric-chip {xampp_score_chip_class}" style="vertical-align: middle;">{xampp_score}</span>'
+        nginx_score_display = f'<span class="metric-chip {nginx_score_chip_class}" style="vertical-align: middle;">{nginx_score}</span>'
+        score_gap_display = f'<span class="metric-chip {confidence_basis_chip_class}" style="vertical-align: middle;">{score_gap}</span>'
+        confidence_signal_display = render_percent_chip(delta_signal, confidence_basis_chip_class)
+
+        return f"""    <div class="card" style="margin-top: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+        <h2 data-i18n="benchmark_report_title" style="margin: 0;"></h2>
+        <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
+      </div>
+      <div class="card-content">
+        <p class="desc" data-i18n="benchmark_report_intro" style="margin: 8px 0 20px 0;"></p>
+
+        <h3 style="margin: 6px 0 12px 0; color: var(--accent);" data-i18n="report_overall_title"></h3>
+        <table style="margin-top: 12px; margin-bottom: 18px; width: 100%; border-collapse: collapse; table-layout: fixed;">
+          <colgroup>
+            <col style="width: 25%;">
+            <col style="width: 25%;">
+            <col style="width: 25%;">
+            <col style="width: 25%;">
+          </colgroup>
+          <thead>
+            <tr style="background-color: rgba(109, 211, 182, 0.1); border-bottom: 2px solid rgba(109, 211, 182, 0.3);">
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="report_overall_win_throughput"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="report_overall_win_latency"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="report_overall_avg_throughput"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="report_overall_avg_latency"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid rgba(109, 211, 182, 0.15);">
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; vertical-align: top;">{throughput_score_display}</td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; vertical-align: top;">{latency_score_display}</td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; vertical-align: top;">{overall_throughput}</td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; vertical-align: top;">{overall_latency}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin: 4px 0 10px 0;">
+          <button class="report-view-btn active" data-report-view="business" data-i18n="report_view_business"></button>
+          <button class="report-view-btn" data-report-view="sre" data-i18n="report_view_sre"></button>
+        </div>
+
+        <table style="margin-top: 12px; width: 100%; border-collapse: collapse; table-layout: fixed;">
+          <colgroup>
+            <col style="width: 8%;">
+            <col style="width: 20%;">
+            <col style="width: 12%;">
+            <col style="width: 12%;">
+            <col style="width: 22%;">
+            <col style="width: 26%;">
+          </colgroup>
+          <thead>
+            <tr style="background-color: rgba(109, 211, 182, 0.1); border-bottom: 2px solid rgba(109, 211, 182, 0.3);">
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="th_endpoint"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="report_col_scenario"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="report_analysis"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="report_compare"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="report_key_diff"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="report_deploy"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {matrix_rows}
+          </tbody>
+        </table>
+
+        <div style="margin-top: 16px; padding: 12px 14px; background: rgba(109, 211, 182, 0.1); border: 1px solid rgba(109, 211, 182, 0.3); border-radius: 8px;">
+          <p style="color: var(--muted); margin: 0 0 10px 0; line-height: 1.6;"><strong style="color: var(--accent);" data-i18n="report_confidence_basis"></strong></p>
+          <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+            <colgroup>
+              <col style="width: 25%;">
+              <col style="width: 25%;">
+              <col style="width: 25%;">
+              <col style="width: 25%;">
+            </colgroup>
+            <thead>
+              <tr style="background-color: rgba(109, 211, 182, 0.1); border-bottom: 2px solid rgba(109, 211, 182, 0.3);">
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="report_compare_gap"></th>
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="report_compare_xampp_score"></th>
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="report_compare_nginx_score"></th>
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="report_compare_signal"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid rgba(109, 211, 182, 0.15);">
+                <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; vertical-align: top;">{score_gap_display}</td>
+                <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; vertical-align: top;">{xampp_score_display}</td>
+                <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; vertical-align: top;">{nginx_score_display}</td>
+                <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.6; vertical-align: top;">{confidence_signal_display}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top: 12px; padding: 12px 14px; background: rgba(109, 211, 182, 0.1); border: 1px solid rgba(109, 211, 182, 0.3); border-radius: 8px;">
+          <p style="color: var(--muted); margin: 0; line-height: 1.6;"><strong style="color: var(--accent);" data-i18n="report_overall_final"></strong>：
+            <span class="report-view-content report-view-business">{final_recommend_business}</span>
+            <span class="report-view-content report-view-sre" style="display:none;">{final_recommend_sre}</span>
+          </p>
+        </div>
+      </div>
+    </div>"""
+
+
 class InterpretationSection:
     """Builds the performance indicators section."""
     
