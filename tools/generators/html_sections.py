@@ -545,16 +545,6 @@ class BenchmarkReportSection:
         score_gap = abs(nginx_score - xampp_score)
         delta_signal = max(abs(avg_req_delta), abs(avg_lat_delta))
 
-        if nginx_score > xampp_score:
-          final_recommend_business = "建議優先採用 NGINX 作為 Laravel 生產環境，XAMPP 保留於開發與相容驗證。"
-          final_recommend_sre = f"建議生產流量主路徑使用 NGINX（總分 {nginx_score} 對 {xampp_score}），XAMPP 保留在開發/回歸驗證節點。"
-        elif xampp_score > nginx_score:
-          final_recommend_business = "目前數據偏向 XAMPP，但建議先以 NGINX 進行長時壓測再定案。"
-          final_recommend_sre = f"目前 XAMPP 總分領先（{xampp_score} 對 {nginx_score}），但建議補做長時與尖峰壓測，確認 NGINX 調校後再決策。"
-        else:
-          final_recommend_business = "兩者各有優勢，建議依端點特性分流部署並持續監測。"
-          final_recommend_sre = f"總分持平（XAMPP {xampp_score} / NGINX {nginx_score}），建議採 route-based upstream 分流並以 APM 持續觀測 tail latency。"
-
         if score_gap >= 3 or (score_gap >= 2 and delta_signal >= 10):
           confidence_basis_chip_class = "metric-high"
         elif score_gap >= 1 or delta_signal >= 5:
@@ -576,6 +566,16 @@ class BenchmarkReportSection:
         nginx_score_display = f'<span class="metric-chip {nginx_score_chip_class}" style="vertical-align: middle;">{nginx_score}</span>'
         score_gap_display = f'<span class="metric-chip {confidence_basis_chip_class}" style="vertical-align: middle;">{score_gap}</span>'
         confidence_signal_display = render_percent_chip(delta_signal, confidence_basis_chip_class)
+
+        if nginx_score > xampp_score:
+          final_recommend_business = "建議優先採用 NGINX 作為 Laravel 生產環境，XAMPP 保留於開發與相容驗證。"
+          final_recommend_sre = f"建議生產流量主路徑使用 NGINX（總分 {nginx_score_display} 對 {xampp_score_display}），XAMPP 保留在開發/回歸驗證節點。"
+        elif xampp_score > nginx_score:
+          final_recommend_business = "目前數據偏向 XAMPP，但建議先以 NGINX 進行長時壓測再定案。"
+          final_recommend_sre = f"目前 XAMPP 總分領先（{xampp_score_display} 對 {nginx_score_display}），但建議補做長時與尖峰壓測，確認 NGINX 調校後再決策。"
+        else:
+          final_recommend_business = "兩者各有優勢，建議依端點特性分流部署並持續監測。"
+          final_recommend_sre = f"總分持平（XAMPP {xampp_score_display} / NGINX {nginx_score_display}），建議採 route-based upstream 分流並以 APM 持續觀測 tail latency。"
 
         return f"""    <div class="card" style="margin-top: 16px;">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
@@ -704,27 +704,27 @@ class InterpretationSection:
           <tbody>
             <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
               <td style="padding: 12px; color: #f2b264; font-weight: 600; font-size: 13px; line-height: 1.5;" data-i18n="interp_throughput"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_throughput_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;"><span class="metric-chip metric-high" data-i18n="metric_high"></span><div style="margin-top: 6px;" data-i18n="interp_throughput_eval"></div></td>
               <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_throughput_recommend"></td>
             </tr>
             <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
               <td style="padding: 12px; color: #6dd3b6; font-weight: 600; font-size: 13px; line-height: 1.5;" data-i18n="interp_latency"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_latency_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;"><span class="metric-chip metric-low" data-i18n="metric_low"></span><div style="margin-top: 6px;" data-i18n="interp_latency_eval"></div></td>
               <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_latency_recommend"></td>
             </tr>
             <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
               <td style="padding: 12px; color: #a7c8c2; font-weight: 600; font-size: 13px; line-height: 1.5;" data-i18n="interp_percentile"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_percentile_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;"><span class="metric-chip metric-low" data-i18n="metric_low"></span><div style="margin-top: 6px;" data-i18n="interp_percentile_eval"></div></td>
               <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_percentile_recommend"></td>
             </tr>
             <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
               <td style="padding: 12px; color: #64b5f6; font-weight: 600; font-size: 13px; line-height: 1.5;" data-i18n="interp_transfer"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_transfer_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;"><span class="metric-chip metric-high" data-i18n="metric_high"></span><div style="margin-top: 6px;" data-i18n="interp_transfer_eval"></div></td>
               <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_transfer_recommend"></td>
             </tr>
             <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
               <td style="padding: 12px; color: #d7b366; font-weight: 600; font-size: 13px; line-height: 1.5;" data-i18n="interp_consistency"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_consistency_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;"><span class="metric-chip metric-compare" data-i18n="metric_stable"></span><div style="margin-top: 6px;" data-i18n="interp_consistency_eval"></div></td>
               <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_consistency_recommend"></td>
             </tr>
           </tbody>

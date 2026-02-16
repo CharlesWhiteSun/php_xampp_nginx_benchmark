@@ -376,8 +376,7 @@ class JavaScriptGenerator:
         });
       });
 
-      const savedView = window.localStorage.getItem('report_view') || 'business';
-      applyReportView(savedView);
+      applyReportView('business');
       document.querySelectorAll('.report-view-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           applyReportView(btn.dataset.reportView);
