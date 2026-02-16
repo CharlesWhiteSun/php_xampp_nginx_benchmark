@@ -203,14 +203,40 @@ class CSSGenerator:
       border-collapse: collapse;
       font-size: 14px;
     }
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: visible;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 8px;
+    }
+    .table-responsive table {
+      margin: 0;
+    }
+    table.report-table {
+      min-width: 520px;
+    }
     th, td {
       border-bottom: 1px solid #1f3c3f;
       padding: 8px;
       text-align: left;
+      position: relative;
     }
     th {
       color: var(--muted);
       font-weight: 600;
+    }
+    table.table-resizable th,
+    table.table-resizable td {
+      user-select: none;
+    }
+    @media (max-width: 900px) {
+      table {
+        font-size: 13px;
+      }
+      th, td {
+        padding: 6px;
+      }
     }
     /* Charts section styling for theme differentiation */
     #charts-section {

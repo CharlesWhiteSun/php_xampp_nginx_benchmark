@@ -139,34 +139,44 @@ class EndpointsSection:
         <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
       </div>
       <div class="card-content">
-        <p class="desc" data-i18n="endpoints_intro"></p>
-        <table style="margin-top: 16px; width: 100%; border-collapse: collapse;">
+        <table style="margin-top: 16px; width: 100%; border-collapse: collapse; table-layout: fixed;">
+          <colgroup>
+            <col style="width: 10%;">
+            <col style="width: 15%;">
+            <col style="width: 15%;">
+            <col style="width: 20%;">
+            <col style="width: 40%;">
+          </colgroup>
           <thead>
             <tr style="background-color: rgba(109, 211, 182, 0.1); border-bottom: 2px solid rgba(109, 211, 182, 0.3);">
-              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1); width: 15%;" data-i18n="endpoint_name"></th>
-              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1); width: 20%;" data-i18n="endpoint_use_case"></th>
-              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1); width: 35%;" data-i18n="endpoint_description"></th>
-              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1); width: 30%;" data-i18n="endpoint_method"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="endpoint_name"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="endpoint_workload"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="endpoint_use_case"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="endpoint_method"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1);" data-i18n="endpoint_description"></th>
             </tr>
           </thead>
           <tbody>
             <tr style="border-bottom: 1px solid rgba(109, 211, 182, 0.15);">
               <td style="padding: 12px; color: #f2b264; font-weight: 600;" data-i18n="endpoint_cpu_title"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px;" data-i18n="endpoint_cpu_usecase"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="endpoint_cpu_desc"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="endpoint_cpu_method"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px;" data-i18n="endpoint_cpu_workload"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word;" data-i18n="endpoint_cpu_usecase"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word;" data-i18n="endpoint_cpu_method"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word;" data-i18n="endpoint_cpu_desc"></td>
             </tr>
             <tr style="border-bottom: 1px solid rgba(109, 211, 182, 0.15);">
               <td style="padding: 12px; color: #6dd3b6; font-weight: 600;" data-i18n="endpoint_json_title"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px;" data-i18n="endpoint_json_usecase"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="endpoint_json_desc"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="endpoint_json_method"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px;" data-i18n="endpoint_json_workload"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word;" data-i18n="endpoint_json_usecase"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word;" data-i18n="endpoint_json_method"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word;" data-i18n="endpoint_json_desc"></td>
             </tr>
             <tr style="border-bottom: 1px solid rgba(109, 211, 182, 0.15);">
               <td style="padding: 12px; color: #a7c8c2; font-weight: 600;" data-i18n="endpoint_io_title"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px;" data-i18n="endpoint_io_usecase"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="endpoint_io_desc"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="endpoint_io_method"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px;" data-i18n="endpoint_io_workload"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word;" data-i18n="endpoint_io_usecase"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word;" data-i18n="endpoint_io_method"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word;" data-i18n="endpoint_io_desc"></td>
             </tr>
           </tbody>
         </table>
