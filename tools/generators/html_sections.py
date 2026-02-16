@@ -216,12 +216,14 @@ class ChartsGridSection:
         <h2 data-i18n="performance_analysis_section" style="margin: 0;"></h2>
         <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.charts-grid-content').style.display = this.parentElement.parentElement.querySelector('.charts-grid-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
       </div>
-      <p class="desc" data-i18n="desc_performance_analysis" style="margin-bottom: 12px; margin-top: 0;"></p>
       <div class="charts-grid-content">
         <div class="grid">
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-          <h2 data-i18n="chart_requests" style="margin: 0;"></h2>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <h2 data-i18n="chart_requests" style="margin: 0;"></h2>
+            <span class="metric-chip metric-high" data-i18n="metric_high"></span>
+          </div>
           <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
         </div>
         <p class="desc" data-i18n="desc_requests" style="margin-bottom: 12px; margin-top: 0;"></p>
@@ -231,7 +233,10 @@ class ChartsGridSection:
       </div>
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-          <h2 data-i18n="chart_latency" style="margin: 0;"></h2>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <h2 data-i18n="chart_latency" style="margin: 0;"></h2>
+            <span class="metric-chip metric-low" data-i18n="metric_low"></span>
+          </div>
           <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
         </div>
         <p class="desc" data-i18n="desc_latency" style="margin-bottom: 12px; margin-top: 0;"></p>
@@ -241,7 +246,10 @@ class ChartsGridSection:
       </div>
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-          <h2 data-i18n="chart_transfer" style="margin: 0;"></h2>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <h2 data-i18n="chart_transfer" style="margin: 0;"></h2>
+            <span class="metric-chip metric-high" data-i18n="metric_high"></span>
+          </div>
           <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
         </div>
         <p class="desc" data-i18n="desc_transfer" style="margin-bottom: 12px; margin-top: 0;"></p>
@@ -251,7 +259,10 @@ class ChartsGridSection:
       </div>
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-          <h2 data-i18n="chart_pctl" style="margin: 0;"></h2>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <h2 data-i18n="chart_pctl" style="margin: 0;"></h2>
+            <span class="metric-chip metric-low" data-i18n="metric_low"></span>
+          </div>
           <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
         </div>
         <p class="desc" data-i18n="desc_pctl" style="margin-bottom: 12px; margin-top: 0;"></p>
@@ -262,7 +273,10 @@ class ChartsGridSection:
       </div>
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-          <h2 data-i18n="chart_dist" style="margin: 0;"></h2>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <h2 data-i18n="chart_dist" style="margin: 0;"></h2>
+            <span class="metric-chip metric-compare" data-i18n="metric_compare"></span>
+          </div>
           <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
         </div>
         <p class="desc" data-i18n="desc_dist" style="margin-bottom: 12px; margin-top: 0;"></p>
@@ -272,7 +286,10 @@ class ChartsGridSection:
       </div>
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-          <h2 data-i18n="chart_delta" style="margin: 0;"></h2>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <h2 data-i18n="chart_delta" style="margin: 0;"></h2>
+            <span class="metric-chip metric-compare" data-i18n="metric_compare"></span>
+          </div>
           <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
         </div>
         <p class="desc" data-i18n="desc_delta" style="margin-bottom: 12px; margin-top: 0;"></p>
@@ -354,29 +371,29 @@ class InterpretationSection:
           </thead>
           <tbody>
             <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
-              <td style="padding: 12px; color: #f2b264; font-weight: 600; font-size: 13px;" data-i18n="interp_throughput"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_throughput_eval"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_throughput_recommend"></td>
+              <td style="padding: 12px; color: #f2b264; font-weight: 600; font-size: 13px; line-height: 1.5;" data-i18n="interp_throughput"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_throughput_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_throughput_recommend"></td>
             </tr>
             <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
-              <td style="padding: 12px; color: #6dd3b6; font-weight: 600; font-size: 13px;" data-i18n="interp_latency"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_latency_eval"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_latency_recommend"></td>
+              <td style="padding: 12px; color: #6dd3b6; font-weight: 600; font-size: 13px; line-height: 1.5;" data-i18n="interp_latency"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_latency_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_latency_recommend"></td>
             </tr>
             <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
-              <td style="padding: 12px; color: #a7c8c2; font-weight: 600; font-size: 13px;" data-i18n="interp_percentile"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_percentile_eval"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_percentile_recommend"></td>
+              <td style="padding: 12px; color: #a7c8c2; font-weight: 600; font-size: 13px; line-height: 1.5;" data-i18n="interp_percentile"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_percentile_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_percentile_recommend"></td>
             </tr>
             <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
-              <td style="padding: 12px; color: #64b5f6; font-weight: 600; font-size: 13px;" data-i18n="interp_transfer"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_transfer_eval"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_transfer_recommend"></td>
+              <td style="padding: 12px; color: #64b5f6; font-weight: 600; font-size: 13px; line-height: 1.5;" data-i18n="interp_transfer"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_transfer_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_transfer_recommend"></td>
             </tr>
             <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
-              <td style="padding: 12px; color: #d7b366; font-weight: 600; font-size: 13px;" data-i18n="interp_consistency"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_consistency_eval"></td>
-              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_consistency_recommend"></td>
+              <td style="padding: 12px; color: #d7b366; font-weight: 600; font-size: 13px; line-height: 1.5;" data-i18n="interp_consistency"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_consistency_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="interp_consistency_recommend"></td>
             </tr>
           </tbody>
         </table>

@@ -167,6 +167,34 @@ class CSSGenerator:
       font-size: 18px;
       color: var(--accent);
     }
+    .metric-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.4;
+      border: 1px solid transparent;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
+    .metric-high {
+      color: #6dd3b6;
+      border-color: rgba(109, 211, 182, 0.45);
+      background: rgba(109, 211, 182, 0.12);
+    }
+    .metric-low {
+      color: #64b5f6;
+      border-color: rgba(100, 181, 246, 0.45);
+      background: rgba(100, 181, 246, 0.12);
+    }
+    .metric-compare {
+      color: #f2b264;
+      border-color: rgba(242, 178, 100, 0.45);
+      background: rgba(242, 178, 100, 0.12);
+    }
     .plot {
       height: 320px;
     }
