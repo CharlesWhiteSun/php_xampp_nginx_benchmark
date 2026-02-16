@@ -9,7 +9,7 @@ from loaders.csv_loader import CSVLoader, CSVFinder
 from processors.data_processor import ChartDataProcessor, HistogramDataProcessor, InsightBuilder, InterpretationBuilder
 from generators.html_builder import CSSGenerator, HTMLStructureBuilder
 from generators.javascript_generator import JavaScriptGenerator
-from generators.html_sections import EndpointsSection, FormulasSection, ChartsGridSection, InsightsTable, InterpretationSection, EndpointAnalysisSection, RawResultsSection, SummarySection
+from generators.html_sections import EndpointsSection, FormulasSection, ChartsGridSection, InsightsTable, InterpretationSection, EndpointAnalysisSection, RawResultsSection, ParametersSection, SummarySection
 from i18n.texts import get_text
 
 
@@ -113,6 +113,7 @@ class ReportGenerator:
     
     def _build_main_content(self, rows: List[BenchmarkRow], insights: List[Insight], config: dict) -> str:
         """Build all main content sections."""
+        params_html = ParametersSection.build(config)
         summary_html = SummarySection.build(config)
         endpoints_html = EndpointsSection.build()
         raw_results_html = RawResultsSection.build(rows)
@@ -122,7 +123,9 @@ class ReportGenerator:
         interpretation_html = InterpretationSection.build()
         endpoint_analysis_html = EndpointAnalysisSection.build()
         
-        return f"""{summary_html}
+        return f"""{params_html}
+
+    {summary_html}
 
 {endpoints_html}
 

@@ -5,12 +5,12 @@ from models.benchmark import BenchmarkRow, Insight
 from processors.data_processor import format_endpoint_label
 
 
-class SummarySection:
-    """Builds the benchmark configuration summary section."""
+class ParametersSection:
+    """Builds benchmark parameters section with configured values."""
     
     @staticmethod
     def build(config: Dict[str, Any]) -> str:
-        """Build summary section HTML."""
+        """Build parameters section HTML."""
         duration = config.get("duration", "N/A")
         connections = config.get("connections", "N/A")
         endpoint_params = config.get("endpoint_params", {})
@@ -23,11 +23,10 @@ class SummarySection:
         
         return f"""    <div class="card" style="margin-bottom: 16px; background: rgba(109, 211, 182, 0.1); border-color: rgba(109, 211, 182, 0.3);">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-        <h2 data-i18n="summary_title" style="margin: 0;"></h2>
+        <h2 data-i18n="params_title" style="margin: 0;"></h2>
         <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
       </div>
       <div class="card-content">
-        <p class="desc" data-i18n="summary_intro"></p>
         <div style="margin-top: 16px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 16px;">
           <div style="text-align: center;">
             <div style="font-weight: 500; color: var(--muted); font-size: 12px; margin-bottom: 6px;" data-i18n="summary_duration"></div>
@@ -61,6 +60,69 @@ class SummarySection:
             <div style="font-size: 18px; font-weight: bold; color: var(--text);"><strong>{io_mode}</strong></div>
           </div>
         </div>
+      </div>
+    </div>"""
+
+
+class SummarySection:
+    """Builds the benchmark configuration summary section."""
+
+    @staticmethod
+    def build(config: Dict[str, Any]) -> str:
+        """Build summary section HTML."""
+        duration = config.get("duration", "N/A")
+        connections = config.get("connections", "N/A")
+        endpoint_params = config.get("endpoint_params", {})
+
+        cpu_iter = endpoint_params.get("cpu", {}).get("iterations", "N/A")
+        json_items = endpoint_params.get("json", {}).get("items", "N/A")
+        io_size = endpoint_params.get("io", {}).get("size", "N/A")
+        io_iter = endpoint_params.get("io", {}).get("iterations", "N/A")
+        io_mode = endpoint_params.get("io", {}).get("mode", "N/A")
+        
+        return f"""    <div class="card" style="margin-bottom: 16px; background: rgba(109, 211, 182, 0.1); border-color: rgba(109, 211, 182, 0.3);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+        <h2 data-i18n="summary_title" style="margin: 0;"></h2>
+        <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
+      </div>
+      <div class="card-content">
+        <p class="desc" data-i18n="summary_intro"></p>
+        <table style="margin-top: 12px; width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background-color: rgba(109, 211, 182, 0.1); border-bottom: 2px solid rgba(109, 211, 182, 0.3);">
+              <th style="padding: 10px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1); width: 16%;" data-i18n="summary_rationale_param"></th>
+              <th style="padding: 10px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1); width: 28%;" data-i18n="summary_rationale_why"></th>
+              <th style="padding: 10px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1); width: 36%;" data-i18n="summary_rationale_meaning"></th>
+              <th style="padding: 10px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1); width: 20%;" data-i18n="summary_rationale_goal"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid rgba(109, 211, 182, 0.15);">
+              <td style="padding: 10px; color: var(--text); font-weight: 600;" data-i18n="summary_duration"></td>
+              <td style="padding: 10px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="summary_rationale_duration_why"></td>
+              <td style="padding: 10px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="summary_rationale_duration_meaning"></td>
+              <td style="padding: 10px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="summary_rationale_duration_goal"></td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(109, 211, 182, 0.15);">
+              <td style="padding: 10px; color: var(--text); font-weight: 600;" data-i18n="summary_connections"></td>
+              <td style="padding: 10px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="summary_rationale_connections_why"></td>
+              <td style="padding: 10px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="summary_rationale_connections_meaning"></td>
+              <td style="padding: 10px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="summary_rationale_connections_goal"></td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(109, 211, 182, 0.15);">
+              <td style="padding: 10px; color: var(--text); font-weight: 600;" data-i18n="summary_endpoints"></td>
+              <td style="padding: 10px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="summary_rationale_endpoint_why"></td>
+              <td style="padding: 10px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="summary_rationale_endpoint_meaning"></td>
+              <td style="padding: 10px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="summary_rationale_endpoint_goal"></td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(109, 211, 182, 0.15);">
+              <td style="padding: 10px; color: var(--text); font-weight: 600;" data-i18n="summary_payload_group"></td>
+              <td style="padding: 10px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="summary_rationale_payload_why"></td>
+              <td style="padding: 10px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="summary_rationale_payload_meaning"></td>
+              <td style="padding: 10px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="summary_rationale_payload_goal"></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>"""
 
