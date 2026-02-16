@@ -276,7 +276,19 @@ class InterpretationBuilder:
             elif not p99_values:
                 parts.append(texts["interp_p99_missing"])
             
-            notes.append(Interpretation(endpoint=display_label, text=" ".join(parts)))
+            # Build the finding summary (in appropriate language)
+            if lang == "zh":
+                if req_winner == lat_winner:
+                    finding = f"吞吐與延遲均：{req_winner}"
+                else:
+                    finding = f"吞吐：{req_winner} | 延遲：{lat_winner}"
+            else:
+                if req_winner == lat_winner:
+                    finding = f"Both metrics favor {req_winner}"
+                else:
+                    finding = f"Throughput: {req_winner} | Latency: {lat_winner}"
+            
+            notes.append(Interpretation(endpoint=display_label, text=" ".join(parts), finding=finding, endpoint_type=label))
         
         return notes
 

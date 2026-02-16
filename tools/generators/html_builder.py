@@ -212,6 +212,16 @@ class CSSGenerator:
       color: var(--muted);
       font-weight: 600;
     }
+    /* Charts section styling for theme differentiation */
+    #charts-section {
+      background: linear-gradient(135deg, rgba(31, 60, 63, 0.2), rgba(109, 211, 182, 0.05)) !important;
+    }
+    body.light-theme #charts-section {
+      background: linear-gradient(135deg, rgba(109, 211, 182, 0.1), rgba(109, 211, 182, 0.04)) !important;
+    }
+    body.dark-theme #charts-section {
+      background: linear-gradient(135deg, rgba(31, 60, 63, 0.3), rgba(109, 211, 182, 0.12)) !important;
+    }
 """
 
 

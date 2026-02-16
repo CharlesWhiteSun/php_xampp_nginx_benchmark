@@ -55,6 +55,8 @@ class Interpretation:
     """User-friendly interpretation text."""
     endpoint: str
     text: str
+    finding: str = ""
+    endpoint_type: str = ""
 
 
 @dataclass

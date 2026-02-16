@@ -114,8 +114,12 @@ function Get-CustomConfig {
 function Show-ConfigSummary {
     param(
         [hashtable]$Config,
-        [string]$ConfigName
+        [string]$ConfigName,
+        [int]$EndpointCount
     )
+
+    $perEndpointDuration = [math]::Max(1, [int][math]::Ceiling($Config.Duration / [double][math]::Max(1, $EndpointCount)))
+    $effectiveTotalDuration = $perEndpointDuration * [math]::Max(1, $EndpointCount)
     
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
@@ -126,7 +130,8 @@ function Show-ConfigSummary {
     Write-Host "$ConfigName" -ForegroundColor Green
     Write-Host ""
     Write-Host "  Parameters:" -ForegroundColor White
-    Write-Host "    * Duration: $($Config.Duration) seconds ($([math]::Round($Config.Duration/60, 1)) minutes)" -ForegroundColor White
+    Write-Host "    * Total Duration: $effectiveTotalDuration seconds ($([math]::Round($effectiveTotalDuration/60, 1)) minutes)" -ForegroundColor White
+    Write-Host "    * Per Endpoint Duration: $perEndpointDuration seconds" -ForegroundColor Gray
     Write-Host "    * Connections: $($Config.Connections)" -ForegroundColor White
     Write-Host ""
 }
@@ -150,16 +155,166 @@ function Show-ProgressTimeline {
     Write-Host "  Time remaining: $($remaining)s | Elapsed: $($ElapsedSeconds)s" -ForegroundColor Gray
 }
 
+function Update-BenchmarkProgress {
+    param(
+        [int]$ElapsedSeconds,
+        [int]$EstimatedTotalSeconds,
+        [switch]$Completed
+    )
+
+    $displayElapsed = [math]::Min($ElapsedSeconds, $EstimatedTotalSeconds)
+    $remaining = [math]::Max(0, $EstimatedTotalSeconds - $displayElapsed)
+    if ($Completed) {
+        $percentage = 100
+    }
+    else {
+        $percentage = [math]::Min(99, [int](($displayElapsed * 100) / [math]::Max(1, $EstimatedTotalSeconds)))
+    }
+    $barLength = 30
+    $filledLength = [math]::Round(($percentage / 100) * $barLength)
+    $emptyLength = $barLength - $filledLength
+    $bar = "[" + ("=" * $filledLength) + (" " * $emptyLength) + "]"
+    $status = if ($Completed) {
+        "  Progress: [==============================] 100% | Finalizing..."
+    }
+    elseif ($displayElapsed -ge $EstimatedTotalSeconds) {
+        "  Progress: [============================= ] 99% | Finalizing..."
+    }
+    else {
+        "  Progress: $bar $percentage% | Elapsed: ${ElapsedSeconds}s | Remaining: ${remaining}s"
+    }
+
+    if ($script:ProgressUseInline) {
+        try {
+            $width = [math]::Max(60, $Host.UI.RawUI.WindowSize.Width - 1)
+            $coords = New-Object System.Management.Automation.Host.Coordinates 0, $script:ProgressLineY
+            $Host.UI.RawUI.CursorPosition = $coords
+            $renderText = $status
+            if ($renderText.Length -gt $width) {
+                $renderText = $renderText.Substring(0, $width)
+            }
+            Write-Host ($renderText.PadRight($width)) -NoNewline -ForegroundColor Cyan
+            if ($Completed) {
+                Write-Host ""
+            }
+            return
+        }
+        catch {
+            $script:ProgressUseInline = $false
+            $script:LastFallbackSecond = -1
+        }
+    }
+
+    if ($script:ProgressUseCarriageReturn) {
+        try {
+            $width = if ($script:ProgressLineWidth -gt 0) { $script:ProgressLineWidth } else { 120 }
+            $renderText = $status
+            if ($renderText.Length -gt $width) {
+                $renderText = $renderText.Substring(0, $width)
+            }
+            Write-Host ("`r" + $renderText.PadRight($width)) -NoNewline -ForegroundColor Cyan
+            if ($Completed) {
+                Write-Host ""
+            }
+            return
+        }
+        catch {
+            $script:ProgressUseCarriageReturn = $false
+            $script:LastFallbackSecond = -1
+        }
+    }
+
+    if ($Completed) {
+        Write-Host $status -ForegroundColor Cyan
+        return
+    }
+
+    if ($ElapsedSeconds -ne $script:LastFallbackSecond -and (($ElapsedSeconds % 5) -eq 0)) {
+        Write-Host $status -ForegroundColor Cyan
+        $script:LastFallbackSecond = $ElapsedSeconds
+    }
+}
+
+function Test-DockerReadiness {
+    $composeCommand = Get-Command docker-compose -ErrorAction SilentlyContinue
+    if (-not $composeCommand) {
+        Write-Host "" 
+        Write-Host "[ERROR] docker-compose command not found." -ForegroundColor Red
+        Write-Host "   Please install Docker Desktop and ensure docker-compose is available in PATH." -ForegroundColor Yellow
+        Write-Host "" 
+        return $false
+    }
+
+    $dockerCommand = Get-Command docker -ErrorAction SilentlyContinue
+    if (-not $dockerCommand) {
+        Write-Host "" 
+        Write-Host "[ERROR] docker command not found." -ForegroundColor Red
+        Write-Host "   Please install Docker Desktop and add docker to PATH." -ForegroundColor Yellow
+        Write-Host "" 
+        return $false
+    }
+
+    $dockerInfoOutput = & docker info 2>&1
+    $dockerExitCode = $LASTEXITCODE
+
+    if ($dockerExitCode -ne 0) {
+        Write-Host "" 
+        Write-Host "[ERROR] Docker engine is not available." -ForegroundColor Red
+        Write-Host "   Please start Docker Desktop and wait until status is Running, then retry." -ForegroundColor Yellow
+        if ($dockerInfoOutput) {
+            $firstLine = (($dockerInfoOutput | Select-Object -First 1) -join "").Trim()
+            if (-not [string]::IsNullOrWhiteSpace($firstLine)) {
+                Write-Host "   Details: $firstLine" -ForegroundColor DarkYellow
+            }
+        }
+        Write-Host "" 
+        return $false
+    }
+
+    return $true
+}
+
 function Start-Benchmark {
     param(
         [hashtable]$Config,
         [string]$ConfigName
     )
+
+    if (-not (Test-DockerReadiness)) {
+        return $false
+    }
+
+    $endpointCount = 3
+    $perEndpointDuration = [math]::Max(1, [int][math]::Ceiling($Config.Duration / [double]$endpointCount))
+    $effectiveTotalDuration = $perEndpointDuration * $endpointCount
     
-    Show-ConfigSummary -Config $Config -ConfigName $ConfigName
+    Show-ConfigSummary -Config $Config -ConfigName $ConfigName -EndpointCount $endpointCount
     
     Write-Host "Confirm to start? (Y/N) [Press Enter for Yes]: " -ForegroundColor Cyan -NoNewline
     $confirm = Read-Host
+
+    $script:ProgressUseInline = $false
+    $script:ProgressUseCarriageReturn = $false
+    $script:ProgressLineY = 0
+    $script:ProgressLineWidth = 120
+    $script:LastFallbackSecond = -1
+    try {
+        if (-not [Console]::IsOutputRedirected) {
+            $script:ProgressUseCarriageReturn = $true
+        }
+
+        if ($Host.UI -and $Host.UI.RawUI) {
+            $script:ProgressLineWidth = [math]::Max(60, $Host.UI.RawUI.WindowSize.Width - 1)
+        }
+
+        if ($Host.Name -eq "ConsoleHost" -and -not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) {
+            $script:ProgressLineY = $Host.UI.RawUI.CursorPosition.Y
+            $script:ProgressUseInline = $true
+        }
+    }
+    catch {
+        $script:ProgressUseInline = $false
+    }
     
     # If user presses Enter (empty input) or types Y/y, proceed. Only N/n cancels.
     if ($confirm -eq "N" -or $confirm -eq "n") {
@@ -181,56 +336,73 @@ function Start-Benchmark {
         # Create temp file for benchmark output
         $outputFile = "$env:TEMP\benchmark_$([guid]::NewGuid()).txt"
         
-        # Start benchmark in background and capture process
+        # Start benchmark in background and capture process output to file
         $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $processInfo.FileName = "docker-compose"
+        $processInfo.FileName = "cmd.exe"
         # Use array for arguments to properly handle quotes and spaces
         $args = @(
             "run", "--rm",
-            "-e", "DURATION=$($Config.Duration)",
+            "-e", "DURATION=$perEndpointDuration",
             "-e", "CONNECTIONS=$($Config.Connections)",
             "benchmark"
         )
-        $processInfo.Arguments = [System.String]::Join(" ", $args)
+        $composeCommand = "docker-compose " + ([System.String]::Join(" ", $args)) + " > `"$outputFile`" 2>&1"
+        $processInfo.Arguments = "/c $composeCommand"
         $processInfo.UseShellExecute = $false
-        # Avoid deadlocks from unconsumed stdout/stderr buffers.
+        # Output is redirected by cmd, so no stream redirection needed here.
         $processInfo.RedirectStandardOutput = $false
         $processInfo.RedirectStandardError = $false
         $processInfo.CreateNoWindow = $true
         
         $process = [System.Diagnostics.Process]::Start($processInfo)
         
-        # Monitor progress while waiting
-        $lastUpdate = Get-Date
+        # Progress bar with countdown (shared logic for all menu options).
+        # run_ab.sh runs 3 endpoints sequentially (cpu/json/io), each for DURATION seconds.
+        # DURATION here is per-endpoint duration, derived from selected total duration.
+        $estimatedTotalSeconds = [math]::Max(1, $effectiveTotalDuration)
+        Write-Host ""
+        
         while (-not $process.HasExited) {
             $currentTime = Get-Date
             $elapsedSeconds = [int]($currentTime - $startTime).TotalSeconds
-            $displayElapsed = [math]::Min($elapsedSeconds, $Config.Duration)
+            Update-BenchmarkProgress -ElapsedSeconds $elapsedSeconds -EstimatedTotalSeconds $estimatedTotalSeconds
             
-            # Update display every second
-            if (($currentTime - $lastUpdate).TotalSeconds -ge 1) {
-                $percentage = [math]::Min(100, ($displayElapsed / $Config.Duration) * 100)
-                $barLength = 30
-                $filledLength = [math]::Round(($percentage / 100) * $barLength)
-                $emptyLength = $barLength - $filledLength
-                
-                $bar = "[" + ("=" * $filledLength) + (" " * $emptyLength) + "]"
-                $remaining = [math]::Max(0, $Config.Duration - $displayElapsed)
-                
-                # Clear the line and update
-                Write-Host "`r  Progress: $bar $([math]::Round($percentage))% | Elapsed: $($displayElapsed)s | Remaining: $($remaining)s" -ForegroundColor Cyan -NoNewline
-                
-                $lastUpdate = $currentTime
-            }
-            
-            Start-Sleep -Milliseconds 100
+            Start-Sleep -Milliseconds 1000
         }
+
+        Update-BenchmarkProgress -ElapsedSeconds $estimatedTotalSeconds -EstimatedTotalSeconds $estimatedTotalSeconds -Completed
         
         # Wait for process to complete
         $process.WaitForExit()
         
         $endTime = Get-Date
         $elapsed = $endTime - $startTime
+        $exitCode = $process.ExitCode
+        $minExpectedSeconds = [math]::Max(5, [int]($estimatedTotalSeconds * 0.9))
+        $completedEarly = $elapsed.TotalSeconds -lt $minExpectedSeconds
+        
+        if ($exitCode -ne 0) {
+            Write-Host "" 
+            Write-Host "[ERROR] Benchmark execution failed." -ForegroundColor Red
+            Write-Host "   Exit Code: $exitCode" -ForegroundColor Red
+            Write-Host "   Elapsed: $([math]::Round($elapsed.TotalSeconds))s (estimated around ${estimatedTotalSeconds}s)" -ForegroundColor Red
+            if (Test-Path $outputFile) {
+                Write-Host "   Log file: $outputFile" -ForegroundColor Yellow
+                Write-Host "   Hint: Open the log file and check the first error line for root cause." -ForegroundColor DarkYellow
+            }
+            Write-Host ""
+            return $false
+        }
+
+        if ($completedEarly) {
+            Write-Host "" 
+            Write-Host "[WARNING] Benchmark finished earlier than estimated, but completed successfully." -ForegroundColor Yellow
+            Write-Host "   Exit Code: $exitCode" -ForegroundColor Yellow
+            Write-Host "   Elapsed: $([math]::Round($elapsed.TotalSeconds))s (estimated around ${estimatedTotalSeconds}s)" -ForegroundColor Yellow
+            Write-Host "   This is not a failure." -ForegroundColor Green
+            Write-Host "   Possible reason: ApacheBench reached request limits before timeout." -ForegroundColor DarkYellow
+            Write-Host ""
+        }
         
         Write-Host ""
         Write-Host ""

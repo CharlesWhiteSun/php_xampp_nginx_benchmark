@@ -16,6 +16,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 REM Check if Docker Compose is available
+where docker-compose >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo ERROR: Docker Compose not found

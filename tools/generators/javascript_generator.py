@@ -179,8 +179,12 @@ class JavaScriptGenerator:
       }
 
       const list = document.getElementById('interpretation-list');
+      const endpointColors = { 'cpu': '#f2b264', 'io': '#a7c8c2', 'json': '#6dd3b6' };
       list.innerHTML = payload.interpretations[lang]
-        .map((item) => `<li><strong>${item.endpoint}</strong>: ${item.text}</li>`)
+        .map((item) => {
+          const color = endpointColors[item.endpoint_type] || '#b0b0b0';
+          return `<tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);"><td style="padding: 12px; color: ${color}; font-weight: 600; font-size: 13px;">${item.endpoint}</td><td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;">${item.finding || ''}</td><td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;">${item.text}</td></tr>`;
+        })
         .join('');
 
       document.querySelectorAll('.lang-btn').forEach((btn) => {

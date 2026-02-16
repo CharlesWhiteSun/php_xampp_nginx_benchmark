@@ -70,7 +70,7 @@ class EndpointsSection:
     
     @staticmethod
     def build() -> str:
-        """Build endpoints section HTML."""
+        """Build endpoints section HTML with table format."""
         return """    <div class="card" style="margin-bottom: 16px;">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
         <h2 data-i18n="endpoints_title" style="margin: 0;"></h2>
@@ -78,20 +78,36 @@ class EndpointsSection:
       </div>
       <div class="card-content">
         <p class="desc" data-i18n="endpoints_intro"></p>
-        <div style="margin-top: 16px; display: grid; gap: 12px;">
-          <div style="border-left: 4px solid #f2b264; padding-left: 12px; padding-top: 8px; padding-bottom: 8px;">
-            <h3 style="margin: 0 0 6px 0; font-size: 14px; color: #f2b264;" data-i18n="endpoint_cpu_title"></h3>
-            <p style="margin: 0; font-size: 13px; color: var(--muted); line-height: 1.6;" data-i18n="endpoint_cpu_desc"></p>
-          </div>
-          <div style="border-left: 4px solid #6dd3b6; padding-left: 12px; padding-top: 8px; padding-bottom: 8px;">
-            <h3 style="margin: 0 0 6px 0; font-size: 14px; color: #6dd3b6;" data-i18n="endpoint_io_title"></h3>
-            <p style="margin: 0; font-size: 13px; color: var(--muted); line-height: 1.6;" data-i18n="endpoint_io_desc"></p>
-          </div>
-          <div style="border-left: 4px solid #a7c8c2; padding-left: 12px; padding-top: 8px; padding-bottom: 8px;">
-            <h3 style="margin: 0 0 6px 0; font-size: 14px; color: #a7c8c2;" data-i18n="endpoint_json_title"></h3>
-            <p style="margin: 0; font-size: 13px; color: var(--muted); line-height: 1.6;" data-i18n="endpoint_json_desc"></p>
-          </div>
-        </div>
+        <table style="margin-top: 16px; width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background-color: rgba(109, 211, 182, 0.1); border-bottom: 2px solid rgba(109, 211, 182, 0.3);">
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1); width: 15%;" data-i18n="endpoint_name"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1); width: 20%;" data-i18n="endpoint_use_case"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1); width: 35%;" data-i18n="endpoint_description"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(109, 211, 182, 1); width: 30%;" data-i18n="endpoint_method"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid rgba(109, 211, 182, 0.15);">
+              <td style="padding: 12px; color: #f2b264; font-weight: 600;" data-i18n="endpoint_cpu_title"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px;" data-i18n="endpoint_cpu_usecase"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="endpoint_cpu_desc"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="endpoint_cpu_method"></td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(109, 211, 182, 0.15);">
+              <td style="padding: 12px; color: #6dd3b6; font-weight: 600;" data-i18n="endpoint_json_title"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px;" data-i18n="endpoint_json_usecase"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="endpoint_json_desc"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="endpoint_json_method"></td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(109, 211, 182, 0.15);">
+              <td style="padding: 12px; color: #a7c8c2; font-weight: 600;" data-i18n="endpoint_io_title"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px;" data-i18n="endpoint_io_usecase"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="endpoint_io_desc"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;" data-i18n="endpoint_io_method"></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>"""
 
@@ -122,8 +138,15 @@ class ChartsGridSection:
     
     @staticmethod
     def build() -> str:
-        """Build charts grid HTML."""
-        return """    <div class="grid">
+        """Build charts grid HTML with professional wrapper."""
+        return """    <div id="charts-section" class="card" style="margin-top: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+        <h2 data-i18n="performance_analysis_section" style="margin: 0;"></h2>
+        <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.charts-grid-content').style.display = this.parentElement.parentElement.querySelector('.charts-grid-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
+      </div>
+      <p class="desc" data-i18n="desc_performance_analysis" style="margin-bottom: 12px; margin-top: 0;"></p>
+      <div class="charts-grid-content">
+        <div class="grid">
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
           <h2 data-i18n="chart_requests" style="margin: 0;"></h2>
@@ -185,6 +208,8 @@ class ChartsGridSection:
           <div id="chart-delta" class="plot"></div>
         </div>
       </div>
+        </div>
+      </div>
     </div>"""
 
 
@@ -194,8 +219,16 @@ class InsightsTable:
     @staticmethod
     def build(insights: List[Dict[str, Any]]) -> str:
         """Build insights table HTML."""
+        def format_server_name(name: str) -> str:
+            """Format server name to uppercase: xampp -> XAMPP, nginx_multi -> NGINX"""
+            if "xampp" in name.lower():
+                return "XAMPP"
+            elif "nginx" in name.lower():
+                return "NGINX"
+            return name.upper()
+        
         rows = "".join([
-            f'<tr><td>{format_endpoint_label(i["endpoint"])}</td><td>{i["req_winner"]}</td><td>{i["req_delta"]:.1f}</td><td>{i["lat_winner"]}</td><td>{i["lat_delta"]:.1f}</td></tr>'
+            f'<tr><td>{format_endpoint_label(i["endpoint"])}</td><td>{format_server_name(i["req_winner"])}</td><td>{i["req_delta"]:.1f}</td><td>{format_server_name(i["lat_winner"])}</td><td>{i["lat_delta"]:.1f}</td></tr>'
             for i in insights
         ])
         
@@ -209,7 +242,7 @@ class InsightsTable:
           <thead>
             <tr>
               <th data-i18n="th_endpoint"></th>
-              <th data-i18n="th_winner_throughput"></th>
+              <th data-i18n="th_winner_throughput_improved"></th>
               <th data-i18n="th_delta"></th>
               <th data-i18n="th_winner_latency"></th>
               <th data-i18n="th_latency_delta"></th>
@@ -224,22 +257,84 @@ class InsightsTable:
 
 
 class InterpretationSection:
-    """Builds the interpretation section."""
+    """Builds the performance indicators section."""
     
     @staticmethod
     def build() -> str:
-        """Build interpretation section HTML."""
+        """Build interpretation section HTML with table format."""
         return """    <div class="card" style="margin-top: 16px; background: rgba(242, 178, 100, 0.15); border-color: rgba(242, 178, 100, 0.3);">
       <p style="color: var(--accent); margin: 0; line-height: 1.6;"><strong data-i18n="interp_intro"></strong></p>
     </div>
 
     <div class="card" style="margin-top: 16px;">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-        <h2 data-i18n="interpretation_title" style="margin: 0;"></h2>
+        <h2 data-i18n="indicators_title" style="margin: 0;"></h2>
         <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
       </div>
       <div class="card-content">
-        <ul class="interpretation" id="interpretation-list"></ul>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+          <thead>
+            <tr style="background-color: rgba(242, 178, 100, 0.1); border-bottom: 2px solid rgba(242, 178, 100, 0.3);">
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(242, 178, 100, 1); width: 25%;" data-i18n="interp_metric"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(242, 178, 100, 1); width: 25%;" data-i18n="interp_evaluation"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(242, 178, 100, 1); width: 50%;" data-i18n="interp_recommendations"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
+              <td style="padding: 12px; color: #f2b264; font-weight: 600; font-size: 13px;" data-i18n="interp_throughput"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_throughput_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_throughput_recommend"></td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
+              <td style="padding: 12px; color: #6dd3b6; font-weight: 600; font-size: 13px;" data-i18n="interp_latency"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_latency_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_latency_recommend"></td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
+              <td style="padding: 12px; color: #a7c8c2; font-weight: 600; font-size: 13px;" data-i18n="interp_percentile"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_percentile_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_percentile_recommend"></td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
+              <td style="padding: 12px; color: #64b5f6; font-weight: 600; font-size: 13px;" data-i18n="interp_transfer"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_transfer_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_transfer_recommend"></td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(242, 178, 100, 0.15);">
+              <td style="padding: 12px; color: #d7b366; font-weight: 600; font-size: 13px;" data-i18n="interp_consistency"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_consistency_eval"></td>
+              <td style="padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.5;" data-i18n="interp_consistency_recommend"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>"""
+
+
+class EndpointAnalysisSection:
+    """Builds the endpoint analysis section."""
+    
+    @staticmethod
+    def build() -> str:
+        """Build endpoint analysis section HTML."""
+        return """    <div class="card" style="margin-top: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+        <h2 data-i18n="endpoint_analysis_title" style="margin: 0;"></h2>
+        <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
+      </div>
+      <div class="card-content">
+        <table id="interpretation-table" style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background-color: rgba(242, 178, 100, 0.1); border-bottom: 2px solid rgba(242, 178, 100, 0.3);">
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(242, 178, 100, 1); width: 15%;" data-i18n="endpoint_name_short"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(242, 178, 100, 1); width: 30%;" data-i18n="interp_finding"></th>
+              <th style="padding: 12px; text-align: left; font-weight: 600; color: rgba(242, 178, 100, 1); width: 55%;" data-i18n="interp_detail"></th>
+            </tr>
+          </thead>
+          <tbody id="interpretation-list">
+          </tbody>
+        </table>
       </div>
     </div>"""
 
@@ -260,9 +355,9 @@ class RawResultsSection:
             for r in rows if r.server == 'nginx_multi'
         ])
         
-        return f"""    <div class="card" style="margin-top: 16px;">
+        return f"""    <div class="card" style="margin-top: 16px; margin-bottom: 24px;">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-        <h2 data-i18n="raw_title" style="margin: 0;"></h2>
+        <h2 data-i18n="test_values_title" style="margin: 0;"></h2>
         <button class="collapse-btn" onclick="this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;">▼</button>
       </div>
       
