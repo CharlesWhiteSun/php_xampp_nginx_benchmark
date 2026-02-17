@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 
 from models.benchmark import BenchmarkRow, Insight
 from processors.data_processor import format_endpoint_label
+from utils.duration_formatter import format_duration_display
 
 
 class ParametersSection:
@@ -11,7 +12,7 @@ class ParametersSection:
     @staticmethod
     def build(config: Dict[str, Any]) -> str:
         """Build parameters section HTML."""
-        duration = config.get("duration", "N/A")
+        duration = format_duration_display(config.get("duration", 0))
         connections = config.get("connections", "N/A")
         endpoint_params = config.get("endpoint_params", {})
         
@@ -31,7 +32,6 @@ class ParametersSection:
           <div style="text-align: center;">
             <div style="font-weight: 500; color: var(--muted); font-size: 12px; margin-bottom: 6px;" data-i18n="summary_duration"></div>
             <div style="font-size: 18px; font-weight: bold; color: var(--text);"><strong>{duration}</strong></div>
-            <div style="font-size: 11px; color: var(--muted); margin-top: 3px;" data-i18n="summary_duration_unit"></div>
           </div>
           <div style="text-align: center;">
             <div style="font-weight: 500; color: var(--muted); font-size: 12px; margin-bottom: 6px;" data-i18n="summary_connections"></div>
