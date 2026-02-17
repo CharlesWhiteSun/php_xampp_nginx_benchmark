@@ -1,7 +1,10 @@
 #!/bin/sh
 set -eu
 
+. /usr/local/bin/lib_ab_parse.sh
+
 DURATION=${DURATION:-10}
+TOTAL_DURATION=${TOTAL_DURATION:-$DURATION}
 CONNECTIONS=${CONNECTIONS:-50}
 MAX_REQUESTS=${MAX_REQUESTS:-1000000000}
 ITER=${ITER:-10000}
@@ -30,7 +33,8 @@ JSON_FIRST=1
 CONFIG_FILE="${OUT_DIR}/config.json"
 cat > "$CONFIG_FILE" <<'CONFIGEOF'
 {
-  "duration": DURATION_VAL,
+    "duration": TOTAL_DURATION_VAL,
+    "per_endpoint_duration": PER_ENDPOINT_DURATION_VAL,
   "connections": CONNECTIONS_VAL,
   "endpoints": [
     "cpu.php",
@@ -55,7 +59,8 @@ cat > "$CONFIG_FILE" <<'CONFIGEOF'
 CONFIGEOF
 
 # Replace placeholders with actual values
-sed -i "s/DURATION_VAL/$DURATION/g" "$CONFIG_FILE"
+sed -i "s/PER_ENDPOINT_DURATION_VAL/$DURATION/g" "$CONFIG_FILE"
+sed -i "s/TOTAL_DURATION_VAL/$TOTAL_DURATION/g" "$CONFIG_FILE"
 sed -i "s/CONNECTIONS_VAL/$CONNECTIONS/g" "$CONFIG_FILE"
 sed -i "s/IO_ITER_VAL/$IO_ITER/g" "$CONFIG_FILE"
 sed -i "s/ITER_VAL/$ITER/g" "$CONFIG_FILE"
@@ -114,33 +119,17 @@ run_ab() {
     echo "=== ${name} :: ${endpoint} ==="
     
     # Run ab test with full output
-    output=$(ab -n "$MAX_REQUESTS" -t "$DURATION" -c "$CONNECTIONS" -q "$url" 2>&1)
+    output=$(ab -t "$DURATION" -n "$MAX_REQUESTS" -c "$CONNECTIONS" -q "$url" 2>&1)
     echo "$output"
 
-    # Extract metrics from ab output
-    requests_sec=$(printf "%s\n" "$output" | awk '/Requests per second:/ {print $4; exit}')
-    mean_latency=$(printf "%s\n" "$output" | awk '/Time per request:.*mean\)/ {print $4; exit}')
-    transfer_sec=$(printf "%s\n" "$output" | awk '/Transfer rate:/ {print $3; exit}')
-    
-    # Parse latency string (e.g., "33.016 [ms]" or "33.016")
-    latency_val=$(echo "$mean_latency" | sed 's/\[.*\]//g' | sed 's/ //g')
-    if [ -z "$latency_val" ]; then
-        latency_val="0"
-    fi
-    latency_avg="${latency_val}ms"
-    
-    # For ab, we don't have percentiles, so approximate them
-    # ab shows some percentile info in "Percentage of requests served" section
-    p50=$(printf "%s\n" "$output" | awk '/50%/{print $2; exit}')
-    p75=$(printf "%s\n" "$output" | awk '/75%/{print $2; exit}')
-    p90=$(printf "%s\n" "$output" | awk '/90%/{print $2; exit}')
-    p99=$(printf "%s\n" "$output" | awk '/99%/{print $2; exit}')
-    
-    # Fallback to approximations if percentiles not found
-    if [ -z "$p50" ]; then p50="$(echo "$latency_val * 0.5" | bc)ms"; fi
-    if [ -z "$p75" ]; then p75="$(echo "$latency_val * 0.75" | bc)ms"; fi
-    if [ -z "$p90" ]; then p90="$(echo "$latency_val * 0.90" | bc)ms"; fi
-    if [ -z "$p99" ]; then p99="$(echo "$latency_val * 1.5" | bc)ms"; fi
+    parse_ab_output "$output" "$DURATION" "$CONNECTIONS"
+    requests_sec="$PARSED_REQUESTS_SEC"
+    latency_avg="$PARSED_LATENCY_AVG"
+    p50="$PARSED_P50"
+    p75="$PARSED_P75"
+    p90="$PARSED_P90"
+    p99="$PARSED_P99"
+    transfer_sec="$PARSED_TRANSFER_SEC"
     
     timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     echo "${timestamp},${server},${endpoint},${requests_sec},${latency_avg},${p50},${p75},${p90},${p99},${transfer_sec}" >> "$CSV_FILE"
@@ -195,26 +184,21 @@ for endpoint in $ENDPOINTS; do
         echo "" >&2
         echo "=== ${name} :: ${endpoint} ===" >&2
         
-        output=$(ab -n "$MAX_REQUESTS" -t "$DURATION" -c "$CONNECTIONS" -q "$url" 2>&1)
+        ab_exit=0
+        output=$(ab -t "$DURATION" -n "$MAX_REQUESTS" -c "$CONNECTIONS" -q "$url" 2>&1) || ab_exit=$?
         echo "$output" >&2
+        if [ "$ab_exit" -ne 0 ]; then
+            echo "[WARN] ab exited with code $ab_exit on ${server}/${endpoint}; continuing with parsed partial output." >&2
+        fi
         
-        requests_sec=$(printf "%s\n" "$output" | awk '/Requests per second:/ {print $4; exit}')
-        mean_latency=$(printf "%s\n" "$output" | awk '/Time per request:.*mean\)/ {print $4; exit}')
-        transfer_sec=$(printf "%s\n" "$output" | awk '/Transfer rate:/ {print $3; exit}')
-        
-        latency_val=$(echo "$mean_latency" | sed 's/\[.*\]//g' | sed 's/ //g')
-        if [ -z "$latency_val" ]; then latency_val="0"; fi
-        latency_avg="${latency_val}ms"
-        
-        p50=$(printf "%s\n" "$output" | awk '/50%/{print $2; exit}')
-        p75=$(printf "%s\n" "$output" | awk '/75%/{print $2; exit}')
-        p90=$(printf "%s\n" "$output" | awk '/90%/{print $2; exit}')
-        p99=$(printf "%s\n" "$output" | awk '/99%/{print $2; exit}')
-        
-        if [ -z "$p50" ]; then p50="$(echo "$latency_val * 0.5" | bc)ms"; fi
-        if [ -z "$p75" ]; then p75="$(echo "$latency_val * 0.75" | bc)ms"; fi
-        if [ -z "$p90" ]; then p90="$(echo "$latency_val * 0.90" | bc)ms"; fi
-        if [ -z "$p99" ]; then p99="$(echo "$latency_val * 1.5" | bc)ms"; fi
+        parse_ab_output "$output" "$DURATION" "$CONNECTIONS"
+        requests_sec="$PARSED_REQUESTS_SEC"
+        latency_avg="$PARSED_LATENCY_AVG"
+        p50="$PARSED_P50"
+        p75="$PARSED_P75"
+        p90="$PARSED_P90"
+        p99="$PARSED_P99"
+        transfer_sec="$PARSED_TRANSFER_SEC"
         
         timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
         echo "${timestamp},${server},${endpoint},${requests_sec},${latency_avg},${p50},${p75},${p90},${p99},${transfer_sec}" > "$temp_csv_xampp"
@@ -231,26 +215,21 @@ for endpoint in $ENDPOINTS; do
         echo "" >&2
         echo "=== ${name} :: ${endpoint} ===" >&2
         
-        output=$(ab -n "$MAX_REQUESTS" -t "$DURATION" -c "$CONNECTIONS" -q "$url" 2>&1)
+        ab_exit=0
+        output=$(ab -t "$DURATION" -n "$MAX_REQUESTS" -c "$CONNECTIONS" -q "$url" 2>&1) || ab_exit=$?
         echo "$output" >&2
+        if [ "$ab_exit" -ne 0 ]; then
+            echo "[WARN] ab exited with code $ab_exit on ${server}/${endpoint}; continuing with parsed partial output." >&2
+        fi
         
-        requests_sec=$(printf "%s\n" "$output" | awk '/Requests per second:/ {print $4; exit}')
-        mean_latency=$(printf "%s\n" "$output" | awk '/Time per request:.*mean\)/ {print $4; exit}')
-        transfer_sec=$(printf "%s\n" "$output" | awk '/Transfer rate:/ {print $3; exit}')
-        
-        latency_val=$(echo "$mean_latency" | sed 's/\[.*\]//g' | sed 's/ //g')
-        if [ -z "$latency_val" ]; then latency_val="0"; fi
-        latency_avg="${latency_val}ms"
-        
-        p50=$(printf "%s\n" "$output" | awk '/50%/{print $2; exit}')
-        p75=$(printf "%s\n" "$output" | awk '/75%/{print $2; exit}')
-        p90=$(printf "%s\n" "$output" | awk '/90%/{print $2; exit}')
-        p99=$(printf "%s\n" "$output" | awk '/99%/{print $2; exit}')
-        
-        if [ -z "$p50" ]; then p50="$(echo "$latency_val * 0.5" | bc)ms"; fi
-        if [ -z "$p75" ]; then p75="$(echo "$latency_val * 0.75" | bc)ms"; fi
-        if [ -z "$p90" ]; then p90="$(echo "$latency_val * 0.90" | bc)ms"; fi
-        if [ -z "$p99" ]; then p99="$(echo "$latency_val * 1.5" | bc)ms"; fi
+        parse_ab_output "$output" "$DURATION" "$CONNECTIONS"
+        requests_sec="$PARSED_REQUESTS_SEC"
+        latency_avg="$PARSED_LATENCY_AVG"
+        p50="$PARSED_P50"
+        p75="$PARSED_P75"
+        p90="$PARSED_P90"
+        p99="$PARSED_P99"
+        transfer_sec="$PARSED_TRANSFER_SEC"
         
         timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
         echo "${timestamp},${server},${endpoint},${requests_sec},${latency_avg},${p50},${p75},${p90},${p99},${transfer_sec}" > "$temp_csv_nginx"
@@ -260,8 +239,8 @@ for endpoint in $ENDPOINTS; do
     NGINX_PID=$!
     
     # Wait for both to complete
-    wait $XAMPP_PID
-    wait $NGINX_PID
+    wait $XAMPP_PID || echo "[WARN] XAMPP process returned non-zero for $endpoint" >&2
+    wait $NGINX_PID || echo "[WARN] NGINX process returned non-zero for $endpoint" >&2
     
     # Merge results from temporary files
     [ -f "$temp_csv_xampp" ] && cat "$temp_csv_xampp" >> "$CSV_FILE"

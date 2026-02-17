@@ -42,6 +42,7 @@ services:
     volumes:
       - ./results:/results
       - ./benchmark/run_ab.sh:/usr/local/bin/run.sh:ro
+      - ./benchmark/lib_ab_parse.sh:/usr/local/bin/lib_ab_parse.sh:ro
     # Environment variables - DURATION, CONNECTIONS, etc. can be overridden via docker-compose run -e flag
     environment:
       URL_XAMPP: http://xampp/

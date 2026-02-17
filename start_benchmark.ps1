@@ -343,6 +343,7 @@ function Start-Benchmark {
         $args = @(
             "run", "--rm",
             "-e", "DURATION=$perEndpointDuration",
+            "-e", "TOTAL_DURATION=$effectiveTotalDuration",
             "-e", "CONNECTIONS=$($Config.Connections)",
             "benchmark"
         )

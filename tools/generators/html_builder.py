@@ -293,8 +293,8 @@ class HTMLStructureBuilder:
         <div class="meta"><span data-i18n="meta_generated"></span>: <span id="meta-generated"></span></div>
       </div>
       <div class="lang-switch">
-        <button class="lang-btn" data-lang="en">English</button>
-        <button class="lang-btn" data-lang="zh">繁體中文</button>
+        <button class="lang-btn" data-lang="zh">中文</button>
+        <button class="lang-btn" data-lang="en">EN</button>
       </div>
     </div>
   </header>"""
