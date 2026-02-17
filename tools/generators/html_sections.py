@@ -359,6 +359,12 @@ class BenchmarkReportSection:
                 return "NGINX"
             return name.upper()
 
+        def bilingual_inline(zh_text: str, en_text: str) -> str:
+          return (
+            f'<span class="lang-zh">{zh_text}</span>'
+            f'<span class="lang-en" style="display:none;">{en_text}</span>'
+          )
+
         throughput_xampp = 0
         throughput_nginx = 0
         latency_xampp = 0
@@ -366,12 +372,18 @@ class BenchmarkReportSection:
         req_deltas = []
         lat_deltas = []
 
-        scenario_map = {
+        scenario_map_zh = {
           "CPU": "Laravel Queue / 批次工作（排程、匯整、背景任務）",
           "JSON": "Laravel API / 控制器回應（即時 API 與前後端互動）",
           "I/O": "Laravel DB + Storage（查詢、檔案存取、快取互動）",
         }
-        endpoint_profiles = {
+        scenario_map_en = {
+          "CPU": "Laravel Queue / Batch Jobs (scheduler, aggregation, background tasks)",
+          "JSON": "Laravel API / Controller Responses (real-time API and frontend interaction)",
+          "I/O": "Laravel DB + Storage (queries, file access, cache interactions)",
+        }
+
+        endpoint_profiles_zh = {
           "CPU": {
             "business": {
               "same_diff": "{winner} 在 CPU 端點同時取得吞吐 {req_chip} 與延遲 {lat_chip} 優勢，代表在計算型工作負載具一致效益。",
@@ -415,6 +427,50 @@ class BenchmarkReportSection:
             },
           },
         }
+        endpoint_profiles_en = {
+          "CPU": {
+            "business": {
+              "same_diff": "{winner} leads CPU endpoint in both throughput {req_chip} and latency {lat_chip}, indicating balanced efficiency for compute-heavy workloads.",
+              "split_diff": "CPU endpoint shows a trade-off: {req_winner} has higher throughput {req_chip}, while {lat_winner} has lower latency {lat_chip}; route by workload type.",
+              "same_deploy": "Deploy batch reports, scheduled aggregation, and background compute flows on {winner} to maximize CPU cost-efficiency.",
+              "split_deploy": "Route long-running and high-concurrency compute traffic to {req_winner}; route interactive synchronous paths to {lat_winner}.",
+            },
+            "sre": {
+              "same_diff": "{winner} leads CPU endpoint on both metrics (throughput {req_chip} / latency {lat_chip}), suggesting better worker scheduling and execution-path stability.",
+              "split_diff": "CPU path diverges: {req_winner} leads worker throughput {req_chip}, while {lat_winner} leads short-request latency {lat_chip}, reflecting scheduling and queue behavior differences.",
+              "same_deploy": "Place Queue/Horizon/scheduled workers on {winner}; tune process manager, worker count, and max execution time there first.",
+              "split_deploy": "Pin batch worker pools to {req_winner}; keep interactive sync routes on {lat_winner} with separate timeout/worker profiles.",
+            },
+          },
+          "JSON": {
+            "business": {
+              "same_diff": "{winner} leads JSON endpoint in both throughput {req_chip} and latency {lat_chip}, improving both API capacity and user responsiveness.",
+              "split_diff": "JSON endpoint is split: {req_winner} is stronger on concurrent API throughput {req_chip}, while {lat_winner} is better for interactive latency {lat_chip}.",
+              "same_deploy": "Prioritize API and frontend data-exchange traffic on {winner} to reduce peak pressure and response wait time.",
+              "split_deploy": "Route bulk output and batch APIs to {req_winner}; route login/checkout/interactive APIs to {lat_winner}.",
+            },
+            "sre": {
+              "same_diff": "{winner} leads JSON endpoint on both dimensions (throughput {req_chip} / latency {lat_chip}), indicating stronger serialization and response flush paths.",
+              "split_diff": "JSON path trade-off: {req_winner} wins payload throughput {req_chip}, while {lat_winner} wins request turnaround latency {lat_chip}.",
+              "same_deploy": "Place API gateway and serialization-heavy controllers on {winner}; tune keep-alive, gzip, and response buffering accordingly.",
+              "split_deploy": "Route bulk-payload endpoints to {req_winner}; latency-sensitive endpoints to {lat_winner} via route-based upstream policy.",
+            },
+          },
+          "I/O": {
+            "business": {
+              "same_diff": "{winner} leads I/O endpoint in both throughput {req_chip} and latency {lat_chip}, making it suitable for data-access and file-service main paths.",
+              "split_diff": "I/O endpoint has a clear trade-off: {req_winner} has higher throughput {req_chip}, while {lat_winner} has lower latency {lat_chip}.",
+              "same_deploy": "Prioritize DB query, storage access, and import/export flows on {winner} to reduce operational complexity.",
+              "split_deploy": "Route background sync and batch writes to {req_winner}; route transactional queries and real-time reads to {lat_winner}.",
+            },
+            "sre": {
+              "same_diff": "{winner} leads I/O endpoint on both metrics (throughput {req_chip} / latency {lat_chip}), indicating stronger connection reuse and queue handling.",
+              "split_diff": "I/O endpoint diverges: {req_winner} leads queue-depth throughput {req_chip}, while {lat_winner} leads latency under contention {lat_chip}.",
+              "same_deploy": "Deploy DB/storage-heavy routes on {winner}; centralize connection pool, timeout, and cache TTL tuning.",
+              "split_deploy": "Point write-heavy/background-sync upstream to {req_winner}; point read-heavy/latency-critical upstream to {lat_winner}.",
+            },
+          },
+        }
         endpoint_color_map = {
           "CPU": "#f2b264",
           "JSON": "#6dd3b6",
@@ -445,52 +501,96 @@ class BenchmarkReportSection:
           elif lat_winner == "NGINX":
             latency_nginx += 1
 
-          throughput_compare = f"{req_winner} 較優 {render_percent_chip(req_delta, 'metric-high')}"
-          latency_compare = f"{lat_winner} 較優 {render_percent_chip(lat_delta, 'metric-high')}"
+          throughput_compare = bilingual_inline(
+              f"{req_winner} 較優 {render_percent_chip(req_delta, 'metric-high')}",
+              f"{req_winner} better {render_percent_chip(req_delta, 'metric-high')}"
+          )
+          latency_compare = bilingual_inline(
+              f"{lat_winner} 較優 {render_percent_chip(lat_delta, 'metric-high')}",
+              f"{lat_winner} better {render_percent_chip(lat_delta, 'metric-high')}"
+          )
 
-          endpoint_profile = endpoint_profiles.get(endpoint_label, endpoint_profiles["JSON"])
+          endpoint_profile_zh = endpoint_profiles_zh.get(endpoint_label, endpoint_profiles_zh["JSON"])
+          endpoint_profile_en = endpoint_profiles_en.get(endpoint_label, endpoint_profiles_en["JSON"])
           req_chip = render_percent_chip(req_delta, "metric-high")
           lat_chip = render_percent_chip(lat_delta, "metric-high")
 
           if req_winner == lat_winner:
-            business_conclusion = endpoint_profile["business"]["same_diff"].format(
+            business_conclusion_zh = endpoint_profile_zh["business"]["same_diff"].format(
               winner=req_winner,
               req_chip=req_chip,
               lat_chip=lat_chip,
             )
-            sre_conclusion = endpoint_profile["sre"]["same_diff"].format(
+            business_conclusion_en = endpoint_profile_en["business"]["same_diff"].format(
               winner=req_winner,
               req_chip=req_chip,
               lat_chip=lat_chip,
             )
-            business_deploy = endpoint_profile["business"]["same_deploy"].format(winner=req_winner)
-            sre_deploy = endpoint_profile["sre"]["same_deploy"].format(winner=req_winner)
+            sre_conclusion_zh = endpoint_profile_zh["sre"]["same_diff"].format(
+              winner=req_winner,
+              req_chip=req_chip,
+              lat_chip=lat_chip,
+            )
+            sre_conclusion_en = endpoint_profile_en["sre"]["same_diff"].format(
+              winner=req_winner,
+              req_chip=req_chip,
+              lat_chip=lat_chip,
+            )
+            business_deploy_zh = endpoint_profile_zh["business"]["same_deploy"].format(winner=req_winner)
+            business_deploy_en = endpoint_profile_en["business"]["same_deploy"].format(winner=req_winner)
+            sre_deploy_zh = endpoint_profile_zh["sre"]["same_deploy"].format(winner=req_winner)
+            sre_deploy_en = endpoint_profile_en["sre"]["same_deploy"].format(winner=req_winner)
           else:
-            business_conclusion = endpoint_profile["business"]["split_diff"].format(
+            business_conclusion_zh = endpoint_profile_zh["business"]["split_diff"].format(
               req_winner=req_winner,
               lat_winner=lat_winner,
               req_chip=req_chip,
               lat_chip=lat_chip,
             )
-            sre_conclusion = endpoint_profile["sre"]["split_diff"].format(
+            business_conclusion_en = endpoint_profile_en["business"]["split_diff"].format(
               req_winner=req_winner,
               lat_winner=lat_winner,
               req_chip=req_chip,
               lat_chip=lat_chip,
             )
-            business_deploy = endpoint_profile["business"]["split_deploy"].format(
+            sre_conclusion_zh = endpoint_profile_zh["sre"]["split_diff"].format(
+              req_winner=req_winner,
+              lat_winner=lat_winner,
+              req_chip=req_chip,
+              lat_chip=lat_chip,
+            )
+            sre_conclusion_en = endpoint_profile_en["sre"]["split_diff"].format(
+              req_winner=req_winner,
+              lat_winner=lat_winner,
+              req_chip=req_chip,
+              lat_chip=lat_chip,
+            )
+            business_deploy_zh = endpoint_profile_zh["business"]["split_deploy"].format(
               req_winner=req_winner,
               lat_winner=lat_winner,
             )
-            sre_deploy = endpoint_profile["sre"]["split_deploy"].format(
+            business_deploy_en = endpoint_profile_en["business"]["split_deploy"].format(
+              req_winner=req_winner,
+              lat_winner=lat_winner,
+            )
+            sre_deploy_zh = endpoint_profile_zh["sre"]["split_deploy"].format(
+              req_winner=req_winner,
+              lat_winner=lat_winner,
+            )
+            sre_deploy_en = endpoint_profile_en["sre"]["split_deploy"].format(
               req_winner=req_winner,
               lat_winner=lat_winner,
             )
 
+          business_conclusion = bilingual_inline(business_conclusion_zh, business_conclusion_en)
+          sre_conclusion = bilingual_inline(sre_conclusion_zh, sre_conclusion_en)
+          business_deploy = bilingual_inline(business_deploy_zh, business_deploy_en)
+          sre_deploy = bilingual_inline(sre_deploy_zh, sre_deploy_en)
+
           matrix_rows += (
             f'<tr>'
             f'<td style="padding: 12px; color: {endpoint_color_map.get(endpoint_label, "var(--text)")}; font-weight: 600;">{endpoint_label}</td>'
-            f'<td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;">{scenario_map.get(endpoint_label, "Laravel 一般工作負載")}</td>'
+            f'<td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;">{bilingual_inline(scenario_map_zh.get(endpoint_label, "Laravel 一般工作負載"), scenario_map_en.get(endpoint_label, "General Laravel workload"))}</td>'
             f'<td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;">{throughput_compare}</td>'
             f'<td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;">{latency_compare}</td>'
             f'<td style="padding: 12px; color: var(--muted); font-size: 13px; line-height: 1.5;">'
@@ -508,18 +608,30 @@ class BenchmarkReportSection:
         avg_lat_delta = sum(lat_deltas) / len(lat_deltas) if lat_deltas else 0.0
 
         if avg_req_delta > 0:
-          overall_throughput = f"XAMPP 平均領先 {render_percent_chip(avg_req_delta, 'metric-high')}"
+          overall_throughput = bilingual_inline(
+            f"XAMPP 平均領先 {render_percent_chip(avg_req_delta, 'metric-high')}",
+            f"XAMPP leads on average by {render_percent_chip(avg_req_delta, 'metric-high')}"
+          )
         elif avg_req_delta < 0:
-          overall_throughput = f"NGINX 平均領先 {render_percent_chip(avg_req_delta, 'metric-high')}"
+          overall_throughput = bilingual_inline(
+            f"NGINX 平均領先 {render_percent_chip(avg_req_delta, 'metric-high')}",
+            f"NGINX leads on average by {render_percent_chip(avg_req_delta, 'metric-high')}"
+          )
         else:
-          overall_throughput = "吞吐表現接近"
+          overall_throughput = bilingual_inline("吞吐表現接近", "Throughput is close")
 
         if avg_lat_delta > 0:
-          overall_latency = f"NGINX 平均延遲較低 {render_percent_chip(avg_lat_delta, 'metric-high')}"
+          overall_latency = bilingual_inline(
+            f"NGINX 平均延遲較低 {render_percent_chip(avg_lat_delta, 'metric-high')}",
+            f"NGINX has lower average latency by {render_percent_chip(avg_lat_delta, 'metric-high')}"
+          )
         elif avg_lat_delta < 0:
-          overall_latency = f"XAMPP 平均延遲較低 {render_percent_chip(avg_lat_delta, 'metric-high')}"
+          overall_latency = bilingual_inline(
+            f"XAMPP 平均延遲較低 {render_percent_chip(avg_lat_delta, 'metric-high')}",
+            f"XAMPP has lower average latency by {render_percent_chip(avg_lat_delta, 'metric-high')}"
+          )
         else:
-          overall_latency = "延遲表現接近"
+          overall_latency = bilingual_inline("延遲表現接近", "Latency is close")
 
         def render_score_pair(xampp_value: int, nginx_value: int) -> str:
           if xampp_value > nginx_value:
@@ -568,14 +680,32 @@ class BenchmarkReportSection:
         confidence_signal_display = render_percent_chip(delta_signal, confidence_basis_chip_class)
 
         if nginx_score > xampp_score:
-          final_recommend_business = "建議優先採用 NGINX 作為 Laravel 生產環境，XAMPP 保留於開發與相容驗證。"
-          final_recommend_sre = f"建議生產流量主路徑使用 NGINX（總分 {nginx_score_display} 對 {xampp_score_display}），XAMPP 保留在開發/回歸驗證節點。"
+          final_recommend_business = bilingual_inline(
+            "建議優先採用 NGINX 作為 Laravel 生產環境，XAMPP 保留於開發與相容驗證。",
+            "Prioritize NGINX for Laravel production; keep XAMPP for development and compatibility checks."
+          )
+          final_recommend_sre = bilingual_inline(
+            f"建議生產流量主路徑使用 NGINX（總分 {nginx_score_display} 對 {xampp_score_display}），XAMPP 保留在開發/回歸驗證節點。",
+            f"Use NGINX as the primary production path (total score {nginx_score_display} vs {xampp_score_display}); keep XAMPP for dev/regression nodes."
+          )
         elif xampp_score > nginx_score:
-          final_recommend_business = "目前數據偏向 XAMPP，但建議先以 NGINX 進行長時壓測再定案。"
-          final_recommend_sre = f"目前 XAMPP 總分領先（{xampp_score_display} 對 {nginx_score_display}），但建議補做長時與尖峰壓測，確認 NGINX 調校後再決策。"
+          final_recommend_business = bilingual_inline(
+            "目前數據偏向 XAMPP，但建議先以 NGINX 進行長時壓測再定案。",
+            "Current data favors XAMPP, but run long-duration validation on NGINX before finalizing."
+          )
+          final_recommend_sre = bilingual_inline(
+            f"目前 XAMPP 總分領先（{xampp_score_display} 對 {nginx_score_display}），但建議補做長時與尖峰壓測，確認 NGINX 調校後再決策。",
+            f"XAMPP currently leads by total score ({xampp_score_display} vs {nginx_score_display}); add long-run and peak tests before deciding after NGINX tuning."
+          )
         else:
-          final_recommend_business = "兩者各有優勢，建議依端點特性分流部署並持續監測。"
-          final_recommend_sre = f"總分持平（XAMPP {xampp_score_display} / NGINX {nginx_score_display}），建議採 route-based upstream 分流並以 APM 持續觀測 tail latency。"
+          final_recommend_business = bilingual_inline(
+            "兩者各有優勢，建議依端點特性分流部署並持續監測。",
+            "Both have strengths; route traffic by endpoint characteristics and keep continuous monitoring."
+          )
+          final_recommend_sre = bilingual_inline(
+            f"總分持平（XAMPP {xampp_score_display} / NGINX {nginx_score_display}），建議採 route-based upstream 分流並以 APM 持續觀測 tail latency。",
+            f"Total score is tied (XAMPP {xampp_score_display} / NGINX {nginx_score_display}); use route-based upstream split and monitor tail latency with APM."
+          )
 
         return f"""    <div class="card" style="margin-top: 16px;">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">

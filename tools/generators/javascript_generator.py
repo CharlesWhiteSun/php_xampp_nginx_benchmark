@@ -326,6 +326,13 @@ class JavaScriptGenerator:
         btn.classList.toggle('active', btn.dataset.lang === lang);
       });
 
+      document.querySelectorAll('.lang-zh').forEach((el) => {
+        el.style.display = (lang === 'zh') ? '' : 'none';
+      });
+      document.querySelectorAll('.lang-en').forEach((el) => {
+        el.style.display = (lang === 'en') ? '' : 'none';
+      });
+
       if (window.renderMathInElement) {
         renderMathInElement(document.body, {
           delimiters: [
