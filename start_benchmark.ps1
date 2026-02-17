@@ -75,6 +75,34 @@ function Show-Menu {
     Write-Host ""
 }
 
+function Format-DurationDisplay {
+    param(
+        [int]$Seconds
+    )
+
+    $safeSeconds = [math]::Max(0, [int]$Seconds)
+
+    if ($safeSeconds -lt 60) {
+        return "${safeSeconds}s"
+    }
+
+    if ($safeSeconds -le 1800) {
+        $minutes = [int][math]::Floor($safeSeconds / 60)
+        $remainingSeconds = $safeSeconds % 60
+        if ($remainingSeconds -eq 0) {
+            return "${minutes}m"
+        }
+        return "${minutes}m ${remainingSeconds}s"
+    }
+
+    $hours = [int][math]::Floor($safeSeconds / 3600)
+    $remainingMinutes = [int][math]::Floor(($safeSeconds % 3600) / 60)
+    if ($remainingMinutes -eq 0) {
+        return "${hours}h"
+    }
+    return "${hours}h ${remainingMinutes}m"
+}
+
 
 function Get-CustomConfig {
     Write-Host ""
@@ -130,8 +158,8 @@ function Show-ConfigSummary {
     Write-Host "$ConfigName" -ForegroundColor Green
     Write-Host ""
     Write-Host "  Parameters:" -ForegroundColor White
-    Write-Host "    * Total Duration: $effectiveTotalDuration seconds ($([math]::Round($effectiveTotalDuration/60, 1)) minutes)" -ForegroundColor White
-    Write-Host "    * Per Endpoint Duration: $perEndpointDuration seconds" -ForegroundColor Gray
+    Write-Host "    * Total Duration: $(Format-DurationDisplay -Seconds $effectiveTotalDuration)" -ForegroundColor White
+    Write-Host "    * Per Endpoint Duration: $(Format-DurationDisplay -Seconds $perEndpointDuration)" -ForegroundColor Gray
     Write-Host "    * Connections: $($Config.Connections)" -ForegroundColor White
     Write-Host ""
 }
@@ -181,7 +209,7 @@ function Update-BenchmarkProgress {
         "  Progress: [============================= ] 99% | Finalizing..."
     }
     else {
-        "  Progress: $bar $percentage% | Elapsed: ${ElapsedSeconds}s | Remaining: ${remaining}s"
+        "  Progress: $bar $percentage% | Elapsed: $(Format-DurationDisplay -Seconds $ElapsedSeconds) | Remaining: $(Format-DurationDisplay -Seconds $remaining)"
     }
 
     if ($script:ProgressUseInline) {
@@ -386,7 +414,7 @@ function Start-Benchmark {
             Write-Host "" 
             Write-Host "[ERROR] Benchmark execution failed." -ForegroundColor Red
             Write-Host "   Exit Code: $exitCode" -ForegroundColor Red
-            Write-Host "   Elapsed: $([math]::Round($elapsed.TotalSeconds))s (estimated around ${estimatedTotalSeconds}s)" -ForegroundColor Red
+            Write-Host "   Elapsed: $(Format-DurationDisplay -Seconds ([int][math]::Round($elapsed.TotalSeconds))) (estimated around $(Format-DurationDisplay -Seconds $estimatedTotalSeconds))" -ForegroundColor Red
             if (Test-Path $outputFile) {
                 Write-Host "   Log file: $outputFile" -ForegroundColor Yellow
                 Write-Host "   Hint: Open the log file and check the first error line for root cause." -ForegroundColor DarkYellow
@@ -399,7 +427,7 @@ function Start-Benchmark {
             Write-Host "" 
             Write-Host "[WARNING] Benchmark finished earlier than estimated, but completed successfully." -ForegroundColor Yellow
             Write-Host "   Exit Code: $exitCode" -ForegroundColor Yellow
-            Write-Host "   Elapsed: $([math]::Round($elapsed.TotalSeconds))s (estimated around ${estimatedTotalSeconds}s)" -ForegroundColor Yellow
+            Write-Host "   Elapsed: $(Format-DurationDisplay -Seconds ([int][math]::Round($elapsed.TotalSeconds))) (estimated around $(Format-DurationDisplay -Seconds $estimatedTotalSeconds))" -ForegroundColor Yellow
             Write-Host "   This is not a failure." -ForegroundColor Green
             Write-Host "   Possible reason: ApacheBench reached request limits before timeout." -ForegroundColor DarkYellow
             Write-Host ""
@@ -408,7 +436,7 @@ function Start-Benchmark {
         Write-Host ""
         Write-Host ""
         Write-Host "[SUCCESS] Benchmark completed!" -ForegroundColor Green
-        Write-Host "   Total Duration: $([math]::Round($elapsed.TotalSeconds)) seconds ($([math]::Round($elapsed.TotalMinutes, 2)) minutes)" -ForegroundColor Green
+        Write-Host "   Total Duration: $(Format-DurationDisplay -Seconds ([int][math]::Round($elapsed.TotalSeconds)))" -ForegroundColor Green
         Write-Host ""
         
         # Clean up
@@ -434,10 +462,37 @@ function Generate-Report {
     Write-Host ""
     
     try {
-        python tools/generate_report.py
+        $reportOutput = python tools/generate_report.py 2>&1
+        $pythonExitCode = $LASTEXITCODE
+        if ($reportOutput) {
+            $reportOutput | ForEach-Object { Write-Host $_ }
+        }
+        if ($pythonExitCode -ne 0) {
+            throw "Report generation failed with exit code $pythonExitCode"
+        }
+
+        $generatedReportPath = $null
+        foreach ($line in $reportOutput) {
+            if ($line -match '^Report generated:\s*(.+)$') {
+                $generatedReportPath = $Matches[1].Trim()
+            }
+        }
+
+        if (-not $generatedReportPath) {
+            $latestReport = Get-ChildItem reports/ -File -Filter "report_*.html" -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending |
+                Select-Object -First 1
+            if ($latestReport) {
+                $generatedReportPath = $latestReport.FullName
+            }
+            else {
+                $generatedReportPath = "reports/report.html"
+            }
+        }
+
         Write-Host ""
         Write-Host "[SUCCESS] Report generated!" -ForegroundColor Green
-        Write-Host "   Location: reports/report.html" -ForegroundColor Green
+        Write-Host "   Location: $generatedReportPath" -ForegroundColor Green
         Write-Host ""
         
         Write-Host "Open report in browser? (Y/N) [Press Enter for Yes]: " -ForegroundColor Cyan -NoNewline
@@ -445,7 +500,7 @@ function Generate-Report {
         
         # If user presses Enter (empty input) or types Y/y, open the report
         if ($openReport -ne "N" -and $openReport -ne "n") {
-            Start-Process "reports/report.html"
+            Start-Process $generatedReportPath
             Write-Host "[INFO] Opening report in browser..." -ForegroundColor Green
         }
     }

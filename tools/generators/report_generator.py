@@ -72,8 +72,12 @@ class ReportGenerator:
         
         # Generate HTML
         html_content = self._build_html(payload, rows, insights, config)
-        output_path = self.reports_dir / "report.html"
+        filename_timestamp = generated_at_local.strftime("%Y-%m-%d_%H-%M-%S")
+        output_path = self.reports_dir / f"report_{filename_timestamp}.html"
         output_path.write_text(html_content, encoding="utf-8")
+
+        latest_path = self.reports_dir / "report.html"
+        latest_path.write_text(html_content, encoding="utf-8")
         
         return output_path
     
