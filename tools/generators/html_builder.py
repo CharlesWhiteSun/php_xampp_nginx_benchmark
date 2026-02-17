@@ -71,6 +71,13 @@ class CSSGenerator:
     .lang-switch {
       display: flex;
       gap: 8px;
+      justify-content: center;
+    }
+    .header-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
     }
     .lang-btn {
       border: 1px solid rgba(31, 60, 63, 0.3);
@@ -92,9 +99,9 @@ class CSSGenerator:
       color: var(--accent);
     }
     footer {
-      background: var(--panel);
-      border-top: 1px solid #1f3c3f;
-      padding: 24px;
+      background: transparent;
+      border-top: 1px solid rgba(31, 60, 63, 0.35);
+      padding: 20px 24px 28px 24px;
       margin-top: 40px;
       text-align: center;
     }
@@ -104,6 +111,22 @@ class CSSGenerator:
       align-items: center;
       justify-content: center;
       flex-wrap: wrap;
+    }
+    .header-theme-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .theme-note {
+      text-align: center;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.6;
+    }
+    .theme-note > div {
+      margin: 2px 0;
     }
     .theme-label {
       color: var(--muted);
@@ -292,9 +315,18 @@ class HTMLStructureBuilder:
         <h1 data-i18n="title"></h1>
         <div class="meta"><span data-i18n="meta_generated"></span>: <span id="meta-generated"></span></div>
       </div>
-      <div class="lang-switch">
-        <button class="lang-btn" data-lang="zh">中文</button>
-        <button class="lang-btn" data-lang="en">EN</button>
+      <div class="header-controls">
+        <div class="lang-switch">
+          <button class="lang-btn" data-lang="zh">中文</button>
+          <button class="lang-btn" data-lang="en">EN</button>
+        </div>
+        <div class="header-theme-wrap">
+          <div class="theme-switch">
+            <button class="theme-btn" data-theme="light" title="Light Theme"></button>
+            <button class="theme-btn" data-theme="default" title="Default/Dark Theme"></button>
+            <button class="theme-btn" data-theme="dark" title="Pure Dark Theme"></button>
+          </div>
+        </div>
       </div>
     </div>
   </header>"""
@@ -303,11 +335,9 @@ class HTMLStructureBuilder:
     def build_footer() -> str:
         """Build footer section."""
         return """  <footer>
-    <div class="theme-switch">
-      <span class="theme-label" data-i18n="theme_label"></span>
-      <button class="theme-btn" data-theme="light" title="Light Theme"></button>
-      <button class="theme-btn" data-theme="default" title="Default/Dark Theme"></button>
-      <button class="theme-btn" data-theme="dark" title="Pure Dark Theme"></button>
+    <div class="theme-note">
+      <div data-i18n="provider_name"></div>
+      <div data-i18n="provider_contact"></div>
     </div>
   </footer>"""
     
