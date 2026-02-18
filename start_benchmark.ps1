@@ -4,28 +4,40 @@
 Clear-Host
 
 # Configuration presets
-$Config1_Name = "Quick Test (3 minutes)"
+$Config1_Name = "Quick Regression (3 minutes)"
 $Config1_Duration = 180
-$Config1_Connections = 50
-$Config1_Description = "Fast verification during development"
+$Config1_Connections = 100
+$Config1_Description = "Daily development check (recommended 50~100)"
 
-$Config2_Name = "Standard Test (10 minutes) [RECOMMENDED]"
+$Config2_Name = "Pre-commit Comparison (10 minutes)"
 $Config2_Duration = 600
-$Config2_Connections = 100
-$Config2_Description = "Daily benchmark testing, most balanced"
+$Config2_Connections = 300
+$Config2_Description = "Version comparison before commit (recommended 200~300)"
 
-$Config3_Name = "Long-term Test (30 minutes)"
-$Config3_Duration = 1800
-$Config3_Connections = 150
-$Config3_Description = "Observe long-term stability and memory leaks"
+$Config3_Name = "Bottleneck Locator (15 minutes x 3 rounds)"
+$Config3_Duration = 900
+$Config3_Connections_R1 = 300
+$Config3_Connections_R2 = 600
+$Config3_Connections_R3 = 1000
+$Config3_Description = "Run three independent rounds: 300 -> 600 -> 1000"
 
-$Config4_Name = "Ultra-long Test (1 hour)"
-$Config4_Duration = 3600
-$Config4_Connections = 200
-$Config4_Description = "Extreme stress test, capacity planning"
+$Config4_Name = "Pre-production Validation (30 minutes)"
+$Config4_Duration = 1800
+$Config4_Connections = 800
+$Config4_Description = "Release gate test (recommended 500~800)"
 
-$Config5_Name = "Custom Parameters"
-$Config5_Description = "Customize test time and connection count"
+$Config5_Name = "Soak Test (8 hours)"
+$Config5_Duration = 28800
+$Config5_Connections = 700
+$Config5_Description = "Long stability run (recommended 300~700)"
+
+$Config6_Name = "Extreme Endurance (8 hours)"
+$Config6_Duration = 28800
+$Config6_Connections = 1000
+$Config6_Description = "Low-frequency limit drill (weekly/monthly)"
+
+$Config7_Name = "Custom Parameters"
+$Config7_Description = "Customize test time and connection count"
 
 function Show-Header {
     Write-Host ""
@@ -69,6 +81,18 @@ function Show-Menu {
     Write-Host "     -> " -ForegroundColor Yellow -NoNewline
     Write-Host $Config5_Description -ForegroundColor Gray
     Write-Host ""
+
+    Write-Host "  6. " -ForegroundColor Yellow -NoNewline
+    Write-Host $Config6_Name -ForegroundColor White
+    Write-Host "     -> " -ForegroundColor Yellow -NoNewline
+    Write-Host $Config6_Description -ForegroundColor Gray
+    Write-Host ""
+
+    Write-Host "  7. " -ForegroundColor Yellow -NoNewline
+    Write-Host $Config7_Name -ForegroundColor White
+    Write-Host "     -> " -ForegroundColor Yellow -NoNewline
+    Write-Host $Config7_Description -ForegroundColor Gray
+    Write-Host ""
     
     Write-Host "  0. " -ForegroundColor Magenta -NoNewline
     Write-Host "Exit" -ForegroundColor Magenta
@@ -111,31 +135,111 @@ function Get-CustomConfig {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
     
-    do {
-        Write-Host "Enter test duration (seconds, min: 10): " -ForegroundColor Cyan -NoNewline
-        $duration = Read-Host
-        if ($duration -notmatch '^\d+$' -or [int]$duration -lt 10) {
-            Write-Host "[ERROR] Please enter a number greater than 10" -ForegroundColor Red
-            continue
+    $endpointInputs = @(
+        @{ Name = "cpu.php"; Label = "CPU endpoint" },
+        @{ Name = "json.php"; Label = "JSON endpoint" },
+        @{ Name = "io.php"; Label = "I/O endpoint" }
+    )
+
+    $endpointPlan = @{}
+
+    foreach ($endpoint in $endpointInputs) {
+        Write-Host ""
+        Write-Host "  [$($endpoint.Label)]" -ForegroundColor Yellow
+
+        do {
+            Write-Host "    Enter duration in seconds (min: 10): " -ForegroundColor Cyan -NoNewline
+            $duration = Read-Host
+            if ($duration -notmatch '^\d+$' -or [int]$duration -lt 10) {
+                Write-Host "[ERROR] Please enter a number greater than or equal to 10" -ForegroundColor Red
+                continue
+            }
+            break
+        } while ($true)
+
+        do {
+            Write-Host "    Enter concurrent connections (min: 1): " -ForegroundColor Cyan -NoNewline
+            $connections = Read-Host
+            if ($connections -notmatch '^\d+$' -or [int]$connections -lt 1) {
+                Write-Host "[ERROR] Please enter a number greater than 0" -ForegroundColor Red
+                continue
+            }
+            break
+        } while ($true)
+
+        $endpointPlan[$endpoint.Name] = @{
+            Duration = [int]$duration
+            Connections = [int]$connections
         }
-        break
-    } while ($true)
-    
-    do {
-        Write-Host "Enter concurrent connections (min: 1): " -ForegroundColor Cyan -NoNewline
-        $connections = Read-Host
-        if ($connections -notmatch '^\d+$' -or [int]$connections -lt 1) {
-            Write-Host "[ERROR] Please enter a number greater than 0" -ForegroundColor Red
-            continue
-        }
-        break
-    } while ($true)
+    }
     
     return @{
         Name        = "Custom Configuration"
-        Duration    = [int]$duration
-        Connections = [int]$connections
+        Duration    = 0
+        Connections = 0
+        EndpointPlan = $endpointPlan
     }
+}
+
+function Get-EndpointPlan {
+    param(
+        [hashtable]$Config,
+        [ValidateSet("sequential", "parallel")]
+        [string]$EndpointSchedule,
+        [int]$EndpointCount
+    )
+
+    if ($Config.ContainsKey("EndpointPlan") -and $Config.EndpointPlan) {
+        return $Config.EndpointPlan
+    }
+
+    if ($EndpointSchedule -eq "parallel") {
+        $perEndpointDuration = [math]::Max(1, [int]$Config.Duration)
+    }
+    else {
+        $perEndpointDuration = [math]::Max(1, [int][math]::Ceiling($Config.Duration / [double][math]::Max(1, $EndpointCount)))
+    }
+
+    return @{
+        "cpu.php" = @{ Duration = $perEndpointDuration; Connections = [int]$Config.Connections }
+        "json.php" = @{ Duration = $perEndpointDuration; Connections = [int]$Config.Connections }
+        "io.php" = @{ Duration = $perEndpointDuration; Connections = [int]$Config.Connections }
+    }
+}
+
+function Get-EndpointSchedule {
+    Write-Host ""
+    Write-Host "Select Endpoint Execution Schedule:" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "  1. " -ForegroundColor Yellow -NoNewline
+    Write-Host "Sequential (Isolated)" -ForegroundColor White
+    Write-Host "     -> Split total duration across cpu/json/io, run endpoints one by one" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "  2. " -ForegroundColor Yellow -NoNewline
+    Write-Host "Parallel (Mixed Load)" -ForegroundColor White
+    Write-Host "     -> Each endpoint runs full duration at the same time (higher combined load)" -ForegroundColor Gray
+    Write-Host ""
+
+    do {
+        $modeChoice = Read-Host "Select schedule (1-2)"
+        switch ($modeChoice) {
+            "1" {
+                return @{
+                    Mode = "sequential"
+                    Name = "Sequential (Isolated)"
+                }
+            }
+            "2" {
+                return @{
+                    Mode = "parallel"
+                    Name = "Parallel (Mixed Load)"
+                }
+            }
+            default {
+                Write-Host "[ERROR] Invalid option, please choose 1 or 2" -ForegroundColor Red
+            }
+        }
+    } while ($true)
 }
 
 
@@ -143,11 +247,57 @@ function Show-ConfigSummary {
     param(
         [hashtable]$Config,
         [string]$ConfigName,
-        [int]$EndpointCount
+        [int]$EndpointCount,
+        [ValidateSet("sequential", "parallel")]
+        [string]$EndpointSchedule = "sequential",
+        [hashtable]$EndpointPlan
     )
 
-    $perEndpointDuration = [math]::Max(1, [int][math]::Ceiling($Config.Duration / [double][math]::Max(1, $EndpointCount)))
-    $effectiveTotalDuration = $perEndpointDuration * [math]::Max(1, $EndpointCount)
+    $endpointNames = @("cpu.php", "json.php", "io.php")
+    if (-not $EndpointPlan) {
+        $EndpointPlan = Get-EndpointPlan -Config $Config -EndpointSchedule $EndpointSchedule -EndpointCount $EndpointCount
+    }
+
+    $durations = @()
+    $connectionsList = @()
+    foreach ($ep in $endpointNames) {
+        $durations += [int]$EndpointPlan[$ep].Duration
+        $connectionsList += [int]$EndpointPlan[$ep].Connections
+    }
+
+    if ($EndpointSchedule -eq "parallel") {
+        $effectiveTotalDuration = ($durations | Measure-Object -Maximum).Maximum
+        $scheduleName = "Parallel (Mixed Load)"
+    }
+    else {
+        $effectiveTotalDuration = ($durations | Measure-Object -Sum).Sum
+        $scheduleName = "Sequential (Isolated)"
+    }
+
+    $uniqueDurations = @($durations | Select-Object -Unique)
+    $uniqueConnections = @($connectionsList | Select-Object -Unique)
+    $maxConnections = [int](($connectionsList | Measure-Object -Maximum).Maximum)
+    $sumConnections = [int](($connectionsList | Measure-Object -Sum).Sum)
+
+    if ($uniqueDurations.Count -eq 1) {
+        $perEndpointDurationText = Format-DurationDisplay -Seconds ([int]$uniqueDurations[0])
+    } else {
+        $perEndpointDurationText = "varies by endpoint"
+    }
+
+    if ($uniqueConnections.Count -eq 1) {
+        $connectionsText = "$($uniqueConnections[0])"
+    } else {
+        $connectionsText = "varies by endpoint"
+    }
+
+    if ($EndpointSchedule -eq "parallel") {
+        $peakClientConcurrency = $sumConnections * 2
+        $loadHint = "All endpoint stages run together. Client workers add up across endpoints."
+    } else {
+        $peakClientConcurrency = $maxConnections * 2
+        $loadHint = "Endpoint stages run one by one. Only one endpoint stage is active at a time."
+    }
     
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
@@ -158,9 +308,17 @@ function Show-ConfigSummary {
     Write-Host "$ConfigName" -ForegroundColor Green
     Write-Host ""
     Write-Host "  Parameters:" -ForegroundColor White
+    Write-Host "    * Endpoint Schedule: $scheduleName" -ForegroundColor White
     Write-Host "    * Total Duration: $(Format-DurationDisplay -Seconds $effectiveTotalDuration)" -ForegroundColor White
-    Write-Host "    * Per Endpoint Duration: $(Format-DurationDisplay -Seconds $perEndpointDuration)" -ForegroundColor Gray
-    Write-Host "    * Connections: $($Config.Connections)" -ForegroundColor White
+    Write-Host "    * Per Endpoint Duration: $perEndpointDurationText" -ForegroundColor Gray
+    Write-Host "    * Connections: $connectionsText" -ForegroundColor White
+    Write-Host "    * Peak Client Concurrency (XAMPP + NGINX-Multi): $peakClientConcurrency" -ForegroundColor White
+    Write-Host "    * Load Hint: $loadHint" -ForegroundColor DarkYellow
+    Write-Host "    * Endpoint Stage Plan:" -ForegroundColor Gray
+    foreach ($ep in $endpointNames) {
+        $runType = if ($EndpointSchedule -eq "parallel") { "parallel" } else { "sequential" }
+        Write-Host "      - ${ep}: Duration $(Format-DurationDisplay -Seconds ([int]$EndpointPlan[$ep].Duration)), Connections $([int]$EndpointPlan[$ep].Connections) ($runType)" -ForegroundColor Gray
+    }
     Write-Host ""
 }
 
@@ -305,7 +463,10 @@ function Test-DockerReadiness {
 function Start-Benchmark {
     param(
         [hashtable]$Config,
-        [string]$ConfigName
+        [string]$ConfigName,
+        [switch]$SkipConfirm,
+        [ValidateSet("sequential", "parallel")]
+        [string]$EndpointSchedule = "sequential"
     )
 
     if (-not (Test-DockerReadiness)) {
@@ -313,13 +474,34 @@ function Start-Benchmark {
     }
 
     $endpointCount = 3
-    $perEndpointDuration = [math]::Max(1, [int][math]::Ceiling($Config.Duration / [double]$endpointCount))
-    $effectiveTotalDuration = $perEndpointDuration * $endpointCount
+    $endpointPlan = Get-EndpointPlan -Config $Config -EndpointSchedule $EndpointSchedule -EndpointCount $endpointCount
+
+    $cpuDuration = [int]$endpointPlan["cpu.php"].Duration
+    $jsonDuration = [int]$endpointPlan["json.php"].Duration
+    $ioDuration = [int]$endpointPlan["io.php"].Duration
+
+    $cpuConnections = [int]$endpointPlan["cpu.php"].Connections
+    $jsonConnections = [int]$endpointPlan["json.php"].Connections
+    $ioConnections = [int]$endpointPlan["io.php"].Connections
+
+    if ($EndpointSchedule -eq "parallel") {
+        $effectiveTotalDuration = [int]([math]::Max($cpuDuration, [math]::Max($jsonDuration, $ioDuration)))
+    }
+    else {
+        $effectiveTotalDuration = $cpuDuration + $jsonDuration + $ioDuration
+    }
+
+    $perEndpointDuration = [int][math]::Ceiling(($cpuDuration + $jsonDuration + $ioDuration) / 3)
     
-    Show-ConfigSummary -Config $Config -ConfigName $ConfigName -EndpointCount $endpointCount
+    Show-ConfigSummary -Config $Config -ConfigName $ConfigName -EndpointCount $endpointCount -EndpointSchedule $EndpointSchedule -EndpointPlan $endpointPlan
     
-    Write-Host "Confirm to start? (Y/N) [Press Enter for Yes]: " -ForegroundColor Cyan -NoNewline
-    $confirm = Read-Host
+    if (-not $SkipConfirm) {
+        Write-Host "Confirm to start? (Y/N) [Press Enter for Yes]: " -ForegroundColor Cyan -NoNewline
+        $confirm = Read-Host
+    }
+    else {
+        $confirm = "Y"
+    }
 
     $script:ProgressUseInline = $false
     $script:ProgressUseCarriageReturn = $false
@@ -358,8 +540,6 @@ function Start-Benchmark {
     Write-Host "========================================" -ForegroundColor Cyan
     
     $startTime = Get-Date
-    $estimatedEndTime = $startTime.AddSeconds($Config.Duration)
-    
     try {
         # Create temp file for benchmark output
         $outputFile = "$env:TEMP\benchmark_$([guid]::NewGuid()).txt"
@@ -368,14 +548,21 @@ function Start-Benchmark {
         $processInfo = New-Object System.Diagnostics.ProcessStartInfo
         $processInfo.FileName = "cmd.exe"
         # Use array for arguments to properly handle quotes and spaces
-        $args = @(
+        $composeArgs = @(
             "run", "--rm",
             "-e", "DURATION=$perEndpointDuration",
             "-e", "TOTAL_DURATION=$effectiveTotalDuration",
-            "-e", "CONNECTIONS=$($Config.Connections)",
+            "-e", "CONNECTIONS=$cpuConnections",
+            "-e", "CPU_DURATION=$cpuDuration",
+            "-e", "JSON_DURATION=$jsonDuration",
+            "-e", "IO_DURATION=$ioDuration",
+            "-e", "CPU_CONNECTIONS=$cpuConnections",
+            "-e", "JSON_CONNECTIONS=$jsonConnections",
+            "-e", "IO_CONNECTIONS=$ioConnections",
+            "-e", "ENDPOINT_SCHEDULE=$EndpointSchedule",
             "benchmark"
         )
-        $composeCommand = "docker-compose " + ([System.String]::Join(" ", $args)) + " > `"$outputFile`" 2>&1"
+        $composeCommand = "docker-compose " + ([System.String]::Join(" ", $composeArgs)) + " > `"$outputFile`" 2>&1"
         $processInfo.Arguments = "/c $composeCommand"
         $processInfo.UseShellExecute = $false
         # Output is redirected by cmd, so no stream redirection needed here.
@@ -386,8 +573,8 @@ function Start-Benchmark {
         $process = [System.Diagnostics.Process]::Start($processInfo)
         
         # Progress bar with countdown (shared logic for all menu options).
-        # run_ab.sh runs 3 endpoints sequentially (cpu/json/io), each for DURATION seconds.
-        # DURATION here is per-endpoint duration, derived from selected total duration.
+        # Sequential mode: endpoints split total duration and run one by one.
+        # Parallel mode: each endpoint runs for full duration concurrently.
         $estimatedTotalSeconds = [math]::Max(1, $effectiveTotalDuration)
         Write-Host ""
         
@@ -494,15 +681,9 @@ function Generate-Report {
         Write-Host "[SUCCESS] Report generated!" -ForegroundColor Green
         Write-Host "   Location: $generatedReportPath" -ForegroundColor Green
         Write-Host ""
-        
-        Write-Host "Open report in browser? (Y/N) [Press Enter for Yes]: " -ForegroundColor Cyan -NoNewline
-        $openReport = Read-Host
-        
-        # If user presses Enter (empty input) or types Y/y, open the report
-        if ($openReport -ne "N" -and $openReport -ne "n") {
-            Start-Process $generatedReportPath
-            Write-Host "[INFO] Opening report in browser..." -ForegroundColor Green
-        }
+
+        Start-Process $generatedReportPath
+        Write-Host "[INFO] Opening report in browser..." -ForegroundColor Green
     }
     catch {
         Write-Host "[ERROR] Failed to generate report: $_" -ForegroundColor Red
@@ -538,54 +719,130 @@ Show-Header
 
 do {
     Show-Menu
-    
-    $choice = Read-Host "Select option (1-5, 0 to exit)"
-    
-    switch ($choice) {
+
+    $choicePrompt = "Select option (1-7, 0 to exit) [Press Enter for 2]: "
+    $choice = Read-Host $choicePrompt
+    if ([string]::IsNullOrWhiteSpace($choice)) {
+        $choice = "2"  # 預設選擇 2
+    }
+    if ($choice -eq "0") {
+        Write-Host ""
+        Write-Host "Thank you for using! Goodbye!" -ForegroundColor Green
+        Write-Host ""
+        exit 0
+    }
+
+    if ($choice -notin @("1", "2", "3", "4", "5", "6", "7")) {
+        Write-Host "[ERROR] Invalid option, please try again" -ForegroundColor Red
+        exit 1
+    }
+
+    # 還原互動式 Endpoint Schedule 選單與提示
+    Write-Host ""
+    Write-Host "Select Endpoint Execution Schedule:" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "  1. " -ForegroundColor Yellow -NoNewline
+    Write-Host "Sequential (Isolated)" -ForegroundColor White
+    Write-Host "     -> Split total duration across cpu/json/io, run endpoints one by one" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "  2. " -ForegroundColor Yellow -NoNewline
+    Write-Host "Parallel (Mixed Load)" -ForegroundColor White
+    Write-Host "     -> Each endpoint runs full duration at the same time (higher combined load)" -ForegroundColor Gray
+    Write-Host ""
+    $schedulePrompt = "Select schedule (1-2) [Press Enter for 1]: "
+    $selectedScheduleInput = Read-Host $schedulePrompt
+    if ([string]::IsNullOrWhiteSpace($selectedScheduleInput)) {
+        $selectedScheduleInput = "1"  # 預設選擇 1
+    }
+    switch ($selectedScheduleInput) {
         "1" {
-            if (Start-Benchmark -Config @{Duration = $Config1_Duration; Connections = $Config1_Connections} -ConfigName $Config1_Name) {
-                Generate-Report
-                Show-LatestResults
-            }
+            $selectedSchedule = @{ Mode = "sequential"; Name = "Sequential (Isolated)" }
         }
         "2" {
-            if (Start-Benchmark -Config @{Duration = $Config2_Duration; Connections = $Config2_Connections} -ConfigName $Config2_Name) {
-                Generate-Report
-                Show-LatestResults
-            }
-        }
-        "3" {
-            if (Start-Benchmark -Config @{Duration = $Config3_Duration; Connections = $Config3_Connections} -ConfigName $Config3_Name) {
-                Generate-Report
-                Show-LatestResults
-            }
-        }
-        "4" {
-            if (Start-Benchmark -Config @{Duration = $Config4_Duration; Connections = $Config4_Connections} -ConfigName $Config4_Name) {
-                Generate-Report
-                Show-LatestResults
-            }
-        }
-        "5" {
-            $customConfig = Get-CustomConfig
-            if (Start-Benchmark -Config $customConfig -ConfigName $customConfig.Name) {
-                Generate-Report
-                Show-LatestResults
-            }
-        }
-        "0" {
-            Write-Host ""
-            Write-Host "Thank you for using! Goodbye!" -ForegroundColor Green
-            Write-Host ""
-            exit 0
+            $selectedSchedule = @{ Mode = "parallel"; Name = "Parallel (Mixed Load)" }
         }
         default {
-            Write-Host "[ERROR] Invalid option, please try again" -ForegroundColor Red
+            Write-Host "[ERROR] Invalid schedule option, please choose 1 or 2" -ForegroundColor Red
+            exit 1
         }
     }
     
-    Write-Host ""
-    Read-Host "Press Enter to return to menu..."
-    Clear-Host
+    switch ($choice) {
+        "1" {
+            if (Start-Benchmark -Config @{Duration = $Config1_Duration; Connections = $Config1_Connections} -ConfigName $Config1_Name -EndpointSchedule $selectedSchedule.Mode) {
+                Generate-Report
+                Show-LatestResults
+                exit 0
+            }
+            exit 1
+        }
+        "2" {
+            if (Start-Benchmark -Config @{Duration = $Config2_Duration; Connections = $Config2_Connections} -ConfigName $Config2_Name -EndpointSchedule $selectedSchedule.Mode) {
+                Generate-Report
+                Show-LatestResults
+                exit 0
+            }
+            exit 1
+        }
+        "3" {
+            $stressConnections = @($Config3_Connections_R1, $Config3_Connections_R2, $Config3_Connections_R3)
+            $roundIndex = 0
+            $allRoundsPassed = $true
+
+            foreach ($roundConnections in $stressConnections) {
+                $roundIndex++
+                $roundName = "$Config3_Name (Round ${roundIndex}/$($stressConnections.Count), ${roundConnections} connections)"
+                $roundSkipConfirm = $roundIndex -gt 1
+
+                $roundOk = Start-Benchmark -Config @{Duration = $Config3_Duration; Connections = $roundConnections} -ConfigName $roundName -SkipConfirm:$roundSkipConfirm -EndpointSchedule $selectedSchedule.Mode
+                if (-not $roundOk) {
+                    $allRoundsPassed = $false
+                    break
+                }
+            }
+
+            if ($allRoundsPassed) {
+                Generate-Report
+                Show-LatestResults
+                exit 0
+            }
+            exit 1
+        }
+        "4" {
+            if (Start-Benchmark -Config @{Duration = $Config4_Duration; Connections = $Config4_Connections} -ConfigName $Config4_Name -EndpointSchedule $selectedSchedule.Mode) {
+                Generate-Report
+                Show-LatestResults
+                exit 0
+            }
+            exit 1
+        }
+        "5" {
+            if (Start-Benchmark -Config @{Duration = $Config5_Duration; Connections = $Config5_Connections} -ConfigName $Config5_Name -EndpointSchedule $selectedSchedule.Mode) {
+                Generate-Report
+                Show-LatestResults
+                exit 0
+            }
+            exit 1
+        }
+        "6" {
+            if (Start-Benchmark -Config @{Duration = $Config6_Duration; Connections = $Config6_Connections} -ConfigName $Config6_Name -EndpointSchedule $selectedSchedule.Mode) {
+                Generate-Report
+                Show-LatestResults
+                exit 0
+            }
+            exit 1
+        }
+        "7" {
+            $customConfig = Get-CustomConfig
+            if (Start-Benchmark -Config $customConfig -ConfigName $customConfig.Name -EndpointSchedule $selectedSchedule.Mode) {
+                Generate-Report
+                Show-LatestResults
+                exit 0
+            }
+            exit 1
+        }
+    }
+
+    exit 1
     
 } while ($true)

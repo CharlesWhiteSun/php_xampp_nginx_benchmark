@@ -16,12 +16,12 @@ assert_gte() {
 extract_num() {
   file="$1"
   key="$2"
-  awk -F '=' -v k="$key" '$1 ~ k {gsub(/ /, "", $2); print $2; exit}' "$file"
+  awk -F '=' -v k="$key" '$1 ~ k {gsub(/ /, "", $2); print $2; exit}' "$file" | tr -d '\r'
 }
 
 extract_nginx_conn() {
   file="$1"
-  awk '/worker_connections/ {for(i=1;i<=NF;i++){if($i ~ /^[0-9]+;/){gsub(/;/, "", $i); print $i; exit}}}' "$file"
+  awk '/worker_connections/ {for(i=1;i<=NF;i++){if($i ~ /^[0-9]+;/){gsub(/;/, "", $i); print $i; exit}}}' "$file" | tr -d '\r'
 }
 
 single_conn=$(extract_nginx_conn "$ROOT_DIR/docker/nginx.conf")
