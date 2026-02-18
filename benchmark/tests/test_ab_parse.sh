@@ -49,4 +49,21 @@ assert_eq "0" "$PARSED_TRANSFER_SEC" "partial parse transfer fallback"
 assert_eq "166" "$PARSED_P50" "partial parse p50 estimated"
 assert_eq "277" "$PARSED_P99" "partial parse p99 estimated"
 
+time_taken_output='Benchmarking nginx-multi (be patient)...apr_pollset_poll: The timeout specified has expired (70007)
+Time taken for tests:   120.000 seconds
+Total of 24000 requests completed'
+
+parse_ab_output "$time_taken_output" 9600 1000
+assert_eq "200.00" "$PARSED_REQUESTS_SEC" "time-taken fallback requests/sec"
+assert_eq "5000.000ms" "$PARSED_LATENCY_AVG" "time-taken fallback latency"
+
+weak_long_output='Benchmarking nginx-multi (be patient)...apr_pollset_poll: The timeout specified has expired (70007)
+Total of 96 requests completed'
+
+parse_ab_output "$weak_long_output" 9600 1000
+assert_eq "0" "$PARSED_REQUESTS_SEC" "weak fallback long duration requests/sec should be zero"
+assert_eq "0ms" "$PARSED_LATENCY_AVG" "weak fallback long duration latency should be zero"
+assert_eq "0" "$PARSED_P50" "weak fallback long duration p50 should be zero"
+assert_eq "0" "$PARSED_P99" "weak fallback long duration p99 should be zero"
+
 echo "[PASS] test_ab_parse.sh"

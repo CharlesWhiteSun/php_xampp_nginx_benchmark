@@ -8,16 +8,30 @@ parse_ab_output() {
     ab_output="$1"
     test_duration="$2"
     concurrency="$3"
+    requests_source="none"
 
     requests_sec_raw=$(printf "%s\n" "$ab_output" | awk '/Requests per second:/ {print $4; exit}')
     requests_sec=$(clean_num "$requests_sec_raw")
+    if [ -n "$requests_sec" ]; then
+        requests_source="direct"
+    fi
 
     if [ -z "$requests_sec" ]; then
         completed_requests=$(printf "%s\n" "$ab_output" | awk '/Total of [0-9]+ requests completed/ {print $3; exit}')
         completed_requests=$(clean_num "$completed_requests")
-        if [ -n "$completed_requests" ] && [ "$test_duration" -gt 0 ]; then
+
+        time_taken_raw=$(printf "%s\n" "$ab_output" | awk '/Time taken for tests:/ {print $5; exit}')
+        time_taken=$(clean_num "$time_taken_raw")
+
+        if [ -n "$completed_requests" ] && [ -n "$time_taken" ] && [ "$(printf "%s" "$time_taken" | awk '{print ($1 > 0)}')" -eq 1 ]; then
+            requests_sec=$(awk -v n="$completed_requests" -v t="$time_taken" 'BEGIN { printf "%.2f", (n/t) }')
+            requests_source="time_taken"
+        elif [ -n "$completed_requests" ] && [ "$test_duration" -gt 0 ] && [ "$test_duration" -le 1800 ] && [ "$(printf "%s" "$completed_requests" | awk -v c="$concurrency" '{print ($1 >= c)}')" -eq 1 ]; then
             requests_sec=$(awk -v n="$completed_requests" -v d="$test_duration" 'BEGIN { printf "%.2f", (n/d) }')
-        else
+            requests_source="duration_fallback"
+        fi
+
+        if [ -z "$requests_sec" ]; then
             requests_sec="0"
         fi
     fi
@@ -25,7 +39,7 @@ parse_ab_output() {
     mean_latency_raw=$(printf "%s\n" "$ab_output" | awk '/Time per request:/ && /\(mean\)/ {print $4; exit}')
     mean_latency_num=$(clean_num "$mean_latency_raw")
 
-    if [ -z "$mean_latency_num" ] && [ "$(printf "%s" "$requests_sec" | awk '{print ($1 > 0)}')" -eq 1 ]; then
+    if [ -z "$mean_latency_num" ] && [ "$(printf "%s" "$requests_sec" | awk '{print ($1 > 0)}')" -eq 1 ] && [ "$requests_source" != "none" ]; then
         mean_latency_num=$(awk -v c="$concurrency" -v r="$requests_sec" 'BEGIN { if (r > 0) printf "%.3f", (c * 1000 / r); else print "0" }')
     fi
     if [ -z "$mean_latency_num" ]; then

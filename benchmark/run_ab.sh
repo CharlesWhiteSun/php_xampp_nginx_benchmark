@@ -119,7 +119,7 @@ run_ab() {
     echo "=== ${name} :: ${endpoint} ==="
     
     # Run ab test with full output
-    output=$(ab -t "$DURATION" -n "$MAX_REQUESTS" -c "$CONNECTIONS" -q "$url" 2>&1)
+    output=$(ab -l -t "$DURATION" -n "$MAX_REQUESTS" -c "$CONNECTIONS" -q "$url" 2>&1)
     echo "$output"
 
     parse_ab_output "$output" "$DURATION" "$CONNECTIONS"
@@ -185,7 +185,7 @@ for endpoint in $ENDPOINTS; do
         echo "=== ${name} :: ${endpoint} ===" >&2
         
         ab_exit=0
-        output=$(ab -t "$DURATION" -n "$MAX_REQUESTS" -c "$CONNECTIONS" -q "$url" 2>&1) || ab_exit=$?
+        output=$(ab -l -t "$DURATION" -n "$MAX_REQUESTS" -c "$CONNECTIONS" -q "$url" 2>&1) || ab_exit=$?
         echo "$output" >&2
         if [ "$ab_exit" -ne 0 ]; then
             echo "[WARN] ab exited with code $ab_exit on ${server}/${endpoint}; continuing with parsed partial output." >&2
@@ -216,7 +216,7 @@ for endpoint in $ENDPOINTS; do
         echo "=== ${name} :: ${endpoint} ===" >&2
         
         ab_exit=0
-        output=$(ab -t "$DURATION" -n "$MAX_REQUESTS" -c "$CONNECTIONS" -q "$url" 2>&1) || ab_exit=$?
+        output=$(ab -l -t "$DURATION" -n "$MAX_REQUESTS" -c "$CONNECTIONS" -q "$url" 2>&1) || ab_exit=$?
         echo "$output" >&2
         if [ "$ab_exit" -ne 0 ]; then
             echo "[WARN] ab exited with code $ab_exit on ${server}/${endpoint}; continuing with parsed partial output." >&2
