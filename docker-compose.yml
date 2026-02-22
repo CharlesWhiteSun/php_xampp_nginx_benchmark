@@ -40,7 +40,9 @@ services:
       - nginx
       - nginx-multi
     volumes:
+      - ./benchmark:/benchmark
       - ./results:/results
+    entrypoint: ["/bin/sh", "-c", "/benchmark/run_ab.sh"]
     # Environment variables - DURATION, CONNECTIONS, etc. can be overridden via docker-compose run -e flag
     environment:
       URL_XAMPP: http://xampp/

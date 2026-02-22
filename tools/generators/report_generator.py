@@ -222,6 +222,7 @@ class ReportGenerator:
         # Default configuration
         default_config = {
             "duration": 10,
+            "per_endpoint_duration": 10,
             "connections": 50,
             "endpoints": ["cpu.php", "json.php", "io.php"],
             "endpoint_params": {
@@ -237,8 +238,12 @@ class ReportGenerator:
             try:
                 with open(config_path, 'r', encoding='utf-8') as f:
                     loaded_config = json.load(f)
-                    # Merge with defaults
-                    return {**default_config, **loaded_config}
+                    # Deep-merge endpoint_params to preserve defaults
+                    merged = {**default_config, **loaded_config}
+                    merged_ep = default_config.get("endpoint_params", {}).copy()
+                    merged_ep.update(loaded_config.get("endpoint_params", {}))
+                    merged["endpoint_params"] = merged_ep
+                    return merged
             except (json.JSONDecodeError, IOError):
                 pass
         

@@ -551,6 +551,7 @@ function Start-Benchmark {
         $composeArgs = @(
             "run", "--rm",
             "-e", "DURATION=$perEndpointDuration",
+            "-e", "PER_ENDPOINT_DURATION=$perEndpointDuration",
             "-e", "TOTAL_DURATION=$effectiveTotalDuration",
             "-e", "CONNECTIONS=$cpuConnections",
             "-e", "CPU_DURATION=$cpuDuration",

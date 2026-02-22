@@ -4,6 +4,7 @@ set -eu
 . /usr/local/bin/lib_ab_parse.sh
 
 DURATION=${DURATION:-10}
+PER_ENDPOINT_DURATION=${PER_ENDPOINT_DURATION:-$DURATION}
 TOTAL_DURATION=${TOTAL_DURATION:-$DURATION}
 CONNECTIONS=${CONNECTIONS:-50}
 MAX_REQUESTS=${MAX_REQUESTS:-1000000000}
@@ -20,6 +21,11 @@ IO_DURATION=${IO_DURATION:-$DURATION}
 CPU_CONNECTIONS=${CPU_CONNECTIONS:-$CONNECTIONS}
 JSON_CONNECTIONS=${JSON_CONNECTIONS:-$CONNECTIONS}
 IO_CONNECTIONS=${IO_CONNECTIONS:-$CONNECTIONS}
+
+# Normalize any accidental CPU_/JSON_/IO_ prefixes in connection envs
+CPU_CONNECTIONS=${CPU_CONNECTIONS#CPU_}
+JSON_CONNECTIONS=${JSON_CONNECTIONS#JSON_}
+IO_CONNECTIONS=${IO_CONNECTIONS#IO_}
 
 URL_XAMPP=${URL_XAMPP:-http://localhost:8081/}
 URL_NGINX=${URL_NGINX:-http://localhost:8082/}
@@ -73,7 +79,7 @@ cat > "$CONFIG_FILE" <<'CONFIGEOF'
 CONFIGEOF
 
 # Replace placeholders with actual values
-sed -i "s/PER_ENDPOINT_DURATION_VAL/$DURATION/g" "$CONFIG_FILE"
+sed -i "s/PER_ENDPOINT_DURATION_VAL/$PER_ENDPOINT_DURATION/g" "$CONFIG_FILE"
 sed -i "s/TOTAL_DURATION_VAL/$TOTAL_DURATION/g" "$CONFIG_FILE"
 sed -i "s/ENDPOINT_SCHEDULE_VAL/$ENDPOINT_SCHEDULE/g" "$CONFIG_FILE"
 sed -i "s/CONNECTIONS_VAL/$CONNECTIONS/g" "$CONFIG_FILE"
@@ -90,15 +96,23 @@ sed -i "s/IO_SIZE_VAL/$IO_SIZE/g" "$CONFIG_FILE"
 sed -i "s/IO_MODE_VAL/$IO_MODE/g" "$CONFIG_FILE"
 sed -i "s/TEST_TIME_VAL/$(date -u +%Y-%m-%dT%H:%M:%SZ)/g" "$CONFIG_FILE"
 
+# Cleanup any accidental placeholder prefixes left like CPU_50, JSON_50, IO_50
+# (some environments or prior replacements could introduce tokens like CPU_50)
+sed -i 's/CPU_\([0-9][0-9]*\)/\1/g' "$CONFIG_FILE" || true
+sed -i 's/JSON_\([0-9][0-9]*\)/\1/g' "$CONFIG_FILE" || true
+sed -i 's/IO_\([0-9][0-9]*\)/\1/g' "$CONFIG_FILE" || true
+
+# Dump environment for diagnostics
+env > "${OUT_DIR}/env_vars.txt"
 wait_for() {
     name="$1"
     url="$2"
     echo "Waiting for ${name} at ${url}..."
     
-    # 先等待网络初始化
+    # ??敺?蝏?憪?
     sleep 2
     
-    # 尝试使用 wget（主要方法）
+    # 撠?雿輻 wget嚗蜓閬瘜?
     for i in $(seq 1 60); do
         if wget -q -O /dev/null "$url" 2>/dev/null; then
             echo "${name} is ready"
@@ -110,7 +124,7 @@ wait_for() {
     done
     
     echo "WARNING: ${name} not responding after 60s, continuing anyway"
-    return 0  # 不中止，继续执行
+    return 0  # 銝葉甇ｇ?蝏抒賒?扯?
 }
 
 endpoint_url() {
@@ -321,7 +335,7 @@ run_endpoint_pair() {
     wait $XAMPP_PID || echo "[WARN] XAMPP process returned non-zero for $endpoint" >&2
     wait $NGINX_PID || echo "[WARN] NGINX process returned non-zero for $endpoint" >&2
 
-    echo "  [$(date +'%H:%M:%S')] ✓ Both tests completed for $endpoint"
+    echo "  [$(date +'%H:%M:%S')] ??Both tests completed for $endpoint"
     echo ""
 }
 
