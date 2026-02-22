@@ -10,6 +10,18 @@ parse_ab_output() {
     concurrency="$3"
     requests_source="none"
 
+    completed_requests=$(printf "%s\n" "$ab_output" | awk '/Complete requests:/ {print $3; exit}')
+    if [ -z "$completed_requests" ]; then
+        completed_requests=$(printf "%s\n" "$ab_output" | awk '/Total of [0-9]+ requests completed/ {print $3; exit}')
+    fi
+    completed_requests=$(clean_num "$completed_requests")
+    if [ -z "$completed_requests" ]; then
+        completed_requests="0"
+    fi
+
+    time_taken_raw=$(printf "%s\n" "$ab_output" | awk '/Time taken for tests:/ {print $5; exit}')
+    time_taken=$(clean_num "$time_taken_raw")
+
     requests_sec_raw=$(printf "%s\n" "$ab_output" | awk '/Requests per second:/ {print $4; exit}')
     requests_sec=$(clean_num "$requests_sec_raw")
     if [ -n "$requests_sec" ]; then
@@ -17,11 +29,6 @@ parse_ab_output() {
     fi
 
     if [ -z "$requests_sec" ]; then
-        completed_requests=$(printf "%s\n" "$ab_output" | awk '/Total of [0-9]+ requests completed/ {print $3; exit}')
-        completed_requests=$(clean_num "$completed_requests")
-
-        time_taken_raw=$(printf "%s\n" "$ab_output" | awk '/Time taken for tests:/ {print $5; exit}')
-        time_taken=$(clean_num "$time_taken_raw")
 
         if [ -n "$completed_requests" ] && [ -n "$time_taken" ] && [ "$(printf "%s" "$time_taken" | awk '{print ($1 > 0)}')" -eq 1 ]; then
             requests_sec=$(awk -v n="$completed_requests" -v t="$time_taken" 'BEGIN { printf "%.2f", (n/t) }')
@@ -53,9 +60,6 @@ parse_ab_output() {
     if [ -z "$transfer_sec" ] || [ "$transfer_sec" = "0" ]; then
         total_transferred_raw=$(printf "%s\n" "$ab_output" | awk '/Total transferred:/ {print $3; exit}')
         total_transferred=$(clean_num "$total_transferred_raw")
-
-        time_taken_raw=$(printf "%s\n" "$ab_output" | awk '/Time taken for tests:/ {print $5; exit}')
-        time_taken=$(clean_num "$time_taken_raw")
 
         if [ -n "$total_transferred" ] && [ -n "$time_taken" ] && [ "$(printf "%s" "$time_taken" | awk '{print ($1 > 0)}')" -eq 1 ]; then
             transfer_sec=$(awk -v bytes="$total_transferred" -v t="$time_taken" 'BEGIN { printf "%.2f", (bytes / t) / 1024 }')

@@ -6,10 +6,10 @@ import json
 
 from models.benchmark import BenchmarkRow, Insight, Interpretation, ReportPayload
 from loaders.csv_loader import CSVLoader, CSVFinder
-from processors.data_processor import ChartDataProcessor, HistogramDataProcessor, InsightBuilder, InterpretationBuilder
+from processors.data_processor import ChartDataProcessor, HistogramDataProcessor, InsightBuilder, InterpretationBuilder, format_endpoint_label
 from generators.html_builder import CSSGenerator, HTMLStructureBuilder
 from generators.javascript_generator import JavaScriptGenerator
-from generators.html_sections import EndpointsSection, FormulasSection, ChartsGridSection, BenchmarkReportSection, InterpretationSection, RawResultsSection, ParametersSection, SummarySection
+from generators.html_sections import EndpointsSection, FormulasSection, ChartsGridSection, BenchmarkReportSection, InterpretationSection, RawResultsSection, ParametersSection, SummarySection, WarningsSection
 from i18n.texts import get_text
 
 
@@ -117,10 +117,12 @@ class ReportGenerator:
     
     def _build_main_content(self, rows: List[BenchmarkRow], insights: List[Insight], config: dict) -> str:
         """Build all main content sections."""
+        warnings = self._find_zero_metrics(rows)
         params_html = ParametersSection.build(config)
         summary_html = SummarySection.build(config)
         endpoints_html = EndpointsSection.build()
         raw_results_html = RawResultsSection.build(rows)
+        warnings_html = WarningsSection.build(warnings, config)
         formulas_html = FormulasSection.build()
         charts_html = ChartsGridSection.build()
         benchmark_report_html = BenchmarkReportSection.build([self._insight_to_dict(i) for i in insights])
@@ -133,6 +135,8 @@ class ReportGenerator:
 {endpoints_html}
 
 {raw_results_html}
+
+{warnings_html}
 
 {formulas_html}
 
@@ -214,6 +218,28 @@ class ReportGenerator:
             if row.latency_p50_ms is not None or row.latency_p99_ms is not None:
                 return True
         return False    
+
+    @staticmethod
+    def _find_zero_metrics(rows: List[BenchmarkRow]) -> List[dict]:
+        """Identify rows where throughput metrics collapsed to zero."""
+        findings = []
+        for row in rows:
+            zero_req = row.requests_sec <= 0
+            zero_transfer = row.transfer_kb_sec <= 0
+            if not (zero_req or zero_transfer):
+                continue
+
+            findings.append({
+                "server": row.server,
+                "server_label": "XAMPP" if "xampp" in row.server else "NGINX",
+                "endpoint": format_endpoint_label(row.endpoint),
+                "requests_zero": zero_req,
+                "transfer_zero": zero_transfer,
+                "requests_sec": row.requests_sec,
+                "transfer_kb_sec": row.transfer_kb_sec,
+            })
+
+        return findings
     @staticmethod
     def _load_config(results_dir: Path) -> dict:
         """Load benchmark configuration from config.json."""

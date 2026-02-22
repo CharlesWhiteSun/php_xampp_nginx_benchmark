@@ -340,6 +340,8 @@ run_endpoint_pair() {
     endpoint_duration="$2"
     endpoint_connections="$3"
     path=$(endpoint_url "$endpoint")
+    xampp_url="${URL_XAMPP%/}/$path"
+    nginx_url="${URL_NGINX_MULTI%/}/$path"
     temp_csv_xampp="${TEMP_DIR}/${endpoint}_xampp.csv"
     temp_csv_nginx="${TEMP_DIR}/${endpoint}_nginx_multi.csv"
     temp_json_xampp="${TEMP_DIR}/${endpoint}_xampp.json"
@@ -350,7 +352,7 @@ run_endpoint_pair() {
 
     (
         server="xampp"
-        url="${URL_XAMPP%/}/$path"
+        url="$xampp_url"
         echo "" >&2
         echo "=== XAMPP (apache) :: ${endpoint} ===" >&2
         run_ab_for_server "$server" "$endpoint" "$url" "$endpoint_duration" "$endpoint_connections" "$temp_csv_xampp" "$temp_json_xampp"
@@ -359,7 +361,7 @@ run_endpoint_pair() {
 
     (
         server="nginx_multi"
-        url="${URL_NGINX_MULTI%/}/$path"
+        url="$nginx_url"
         echo "" >&2
         echo "=== NGINX (multi-core, dynamic) :: ${endpoint} ===" >&2
         run_ab_for_server "$server" "$endpoint" "$url" "$endpoint_duration" "$endpoint_connections" "$temp_csv_nginx" "$temp_json_nginx"

@@ -218,6 +218,11 @@ class CSSGenerator:
       border-color: rgba(242, 178, 100, 0.45);
       background: rgba(242, 178, 100, 0.12);
     }
+    .metric-warning {
+      color: #f25c54;
+      border-color: rgba(242, 92, 84, 0.4);
+      background: rgba(242, 92, 84, 0.12);
+    }
     .report-view-btn {
       border: 1px solid #1f3c3f;
       background: rgba(109, 211, 182, 0.08);

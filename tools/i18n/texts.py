@@ -197,6 +197,11 @@ TEXTS = {
         "summary_io_mode": "I/O Mode",
         "summary_endpoints": "Test Endpoints",
         "summary_test_time": "Test Timestamp",
+        "warnings_title": "Instability Alerts (Zero Throughput)",
+        "warnings_intro": "Some endpoints returned zero throughput under load; treat this as a sign of hitting the server's capacity ceiling.",
+        "warnings_col_endpoint": "Endpoint",
+        "warnings_col_server": "Server",
+        "warnings_col_issue": "Impact & Next Action",
     },
     "zh": {
         "lang": "zh-Hant",
@@ -394,6 +399,11 @@ TEXTS = {
         "summary_io_mode": "I/O 模式",
         "summary_endpoints": "測試端點",
         "summary_test_time": "測試時間戳",
+        "warnings_title": "零吞吐與不穩定告警",
+        "warnings_intro": "部分端點在高併發時吞吐降為 0，代表伺服器已觸及軟體極限，需視為容量警訊。",
+        "warnings_col_endpoint": "端點",
+        "warnings_col_server": "伺服器",
+        "warnings_col_issue": "異常與處置",
     }
 }
 

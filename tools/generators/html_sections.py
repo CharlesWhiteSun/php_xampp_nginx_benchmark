@@ -127,6 +127,96 @@ class SummarySection:
     </div>"""
 
 
+class WarningsSection:
+    """Builds warning section for anomalous results."""
+
+    @staticmethod
+    def build(warnings: List[Dict[str, Any]], config: Dict[str, Any]) -> str:
+        """Build warnings section HTML. Returns empty string when no warnings."""
+        if not warnings:
+            return ""
+
+        connections = config.get("connections", "N/A")
+        rows = []
+
+        def build_bilingual_note(item: Dict[str, Any]) -> str:
+            endpoint = item.get("endpoint", "")
+            endpoint_type = endpoint.lower()
+            server = item.get("server_label", "")
+            req_zero = item.get("requests_zero")
+            xfer_zero = item.get("transfer_zero")
+
+            zh_parts = []
+            en_parts = []
+
+            if endpoint_type == "cpu":
+                zh_parts.append(f"{server} 的 {endpoint} 在 {connections} 連線下吞吐歸零，代表計算 worker 已飽和或單核已達極限。")
+                en_parts.append(f"{server} {endpoint} hit zero throughput at {connections} connections, indicating compute workers saturated or single-core ceiling reached.")
+            elif endpoint_type == "json":
+                zh_parts.append(f"{server} 的 {endpoint} 在 {connections} 連線下吞吐歸零，顯示序列化/解序列化管線阻塞或 request queue 滿載。")
+                en_parts.append(f"{server} {endpoint} hit zero throughput at {connections} connections, showing JSON serialization pipeline stalled or the request queue is overwhelmed.")
+            elif "i/o" in endpoint_type or "io" == endpoint_type:
+                zh_parts.append(f"{server} 的 {endpoint} 在 {connections} 連線下吞吐歸零，顯示 I/O 路徑（磁碟或網路）被壓垮或連線大量重試。")
+                en_parts.append(f"{server} {endpoint} hit zero throughput at {connections} connections, indicating the I/O path (disk/network) collapsed or is retrying heavily.")
+            else:
+                zh_parts.append(f"{server} 的 {endpoint} 在 {connections} 連線下吞吐歸零，顯示伺服器軟體已達併發極限。")
+                en_parts.append(f"{server} {endpoint} hit zero throughput at {connections} connections, indicating the server software reached its concurrency limit.")
+
+            if xfer_zero and not req_zero:
+                zh_parts.append("傳輸量為 0 代表回應輸出被阻斷或連線提早終止，需檢視輸出管線與 keep-alive 設定。")
+                en_parts.append("Transfer at 0 implies the response path was blocked or connections terminated early; review output pipeline and keep-alive settings.")
+            elif req_zero and not xfer_zero:
+                zh_parts.append("請求吞吐為 0 但仍有輸出，可能是極端排程延遲或少量回補，建議分流併發或降低 connection 數。")
+                en_parts.append("Requests/sec at 0 with some transfer suggests extreme scheduling stalls with minimal completions; consider splitting traffic or reducing connections.")
+            else:
+                zh_parts.append("建議將該端點流量分流至較穩定的伺服器、降低併發或調整 worker/pool 設定以避開此極限。")
+                en_parts.append("Route this endpoint to a more stable server, lower concurrency, or tune worker/pool settings to avoid this limit.")
+
+            zh = " ".join(zh_parts)
+            en = " ".join(en_parts)
+            return (
+                f"<span class=\"lang-zh\">{zh}</span>"
+                f"<span class=\"lang-en\" style=\"display:none;\">{en}</span>"
+            )
+
+        for item in warnings:
+          chips = []
+          if item.get("requests_zero"):
+            chips.append("<span class=\"metric-chip metric-warning\">Req/sec = 0</span>")
+          if item.get("transfer_zero"):
+            chips.append("<span class=\"metric-chip metric-warning\">Transfer/sec = 0</span>")
+
+          bilingual_note = build_bilingual_note(item)
+
+          rows.append(
+            f"<tr><td>{item['endpoint']}</td><td>{item['server_label']}</td><td>{' '.join(chips)}<div class=\"desc\" style=\"margin-top: 6px;\">{bilingual_note}</div></td></tr>"
+          )
+
+        rows_html = "".join(rows)
+
+        return f"""    <div class=\"card\" style=\"margin-bottom: 16px; background: rgba(242, 92, 84, 0.08); border-color: rgba(242, 92, 84, 0.4);\">
+      <div style=\"display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;\">
+        <h2 data-i18n=\"warnings_title\" style=\"margin: 0; color: #f25c54;\"></h2>
+        <button class=\"collapse-btn\" onclick=\"this.parentElement.parentElement.querySelector('.card-content').style.display = this.parentElement.parentElement.querySelector('.card-content').style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent === '▼' ? '▶' : '▼';\" style=\"background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px;\">▼</button>
+      </div>
+      <div class=\"card-content\">
+        <p class=\"desc\" data-i18n=\"warnings_intro\" style=\"margin-top: 0; margin-bottom: 12px;\"></p>
+        <table style=\"width: 100%; border-collapse: collapse;\">
+          <thead>
+            <tr style=\"background-color: rgba(242, 92, 84, 0.1); border-bottom: 2px solid rgba(242, 92, 84, 0.35);\">
+              <th style=\"padding: 10px; text-align: left; font-weight: 600; color: #f25c54; width: 24%;\" data-i18n=\"warnings_col_endpoint\"></th>
+              <th style=\"padding: 10px; text-align: left; font-weight: 600; color: #f25c54; width: 18%;\" data-i18n=\"warnings_col_server\"></th>
+              <th style=\"padding: 10px; text-align: left; font-weight: 600; color: #f25c54; width: 58%;\" data-i18n=\"warnings_col_issue\"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows_html}
+          </tbody>
+        </table>
+      </div>
+    </div>"""
+
+
 class EndpointsSection:
     """Builds the endpoints explanation section."""
     
@@ -896,13 +986,30 @@ class RawResultsSection:
     @staticmethod
     def build(rows: List[BenchmarkRow]) -> str:
         """Build raw results section HTML."""
+        def metric_cell(display: str, is_zero: bool) -> str:
+          if is_zero:
+            return "<span class=\"metric-chip metric-warning\">0</span>"
+          return f"{display}"
+
         xampp_rows = "".join([
-            f'<tr><td>{format_endpoint_label(r.endpoint)}</td><td>{r.requests_sec:.2f}</td><td>{r.latency_avg}</td><td>{r.latency_p50}</td><td>{r.latency_p90}</td><td>{r.latency_p99}</td><td>{r.transfer_sec}</td></tr>'
+            f'<tr><td>{format_endpoint_label(r.endpoint)}</td>'
+            f'<td>{metric_cell(f"{r.requests_sec:.2f}", r.requests_sec <= 0)}</td>'
+            f'<td>{r.latency_avg}</td>'
+            f'<td>{r.latency_p50}</td>'
+            f'<td>{r.latency_p90}</td>'
+            f'<td>{r.latency_p99}</td>'
+            f'<td>{metric_cell(r.transfer_sec, r.transfer_kb_sec <= 0)}</td></tr>'
             for r in rows if r.server == 'xampp'
         ])
         
         nginx_multi_rows = "".join([
-            f'<tr><td>{format_endpoint_label(r.endpoint)}</td><td>{r.requests_sec:.2f}</td><td>{r.latency_avg}</td><td>{r.latency_p50}</td><td>{r.latency_p90}</td><td>{r.latency_p99}</td><td>{r.transfer_sec}</td></tr>'
+            f'<tr><td>{format_endpoint_label(r.endpoint)}</td>'
+            f'<td>{metric_cell(f"{r.requests_sec:.2f}", r.requests_sec <= 0)}</td>'
+            f'<td>{r.latency_avg}</td>'
+            f'<td>{r.latency_p50}</td>'
+            f'<td>{r.latency_p90}</td>'
+            f'<td>{r.latency_p99}</td>'
+            f'<td>{metric_cell(r.transfer_sec, r.transfer_kb_sec <= 0)}</td></tr>'
             for r in rows if r.server == 'nginx_multi'
         ])
         
