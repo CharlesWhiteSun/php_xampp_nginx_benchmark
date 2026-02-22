@@ -48,6 +48,20 @@ parse_ab_output() {
 
     transfer_sec_raw=$(printf "%s\n" "$ab_output" | awk '/Transfer rate:/ {print $3; exit}')
     transfer_sec=$(clean_num "$transfer_sec_raw")
+
+    # Fallback: if Transfer rate is missing or zero, derive it from Total transferred and duration
+    if [ -z "$transfer_sec" ] || [ "$transfer_sec" = "0" ]; then
+        total_transferred_raw=$(printf "%s\n" "$ab_output" | awk '/Total transferred:/ {print $3; exit}')
+        total_transferred=$(clean_num "$total_transferred_raw")
+
+        time_taken_raw=$(printf "%s\n" "$ab_output" | awk '/Time taken for tests:/ {print $5; exit}')
+        time_taken=$(clean_num "$time_taken_raw")
+
+        if [ -n "$total_transferred" ] && [ -n "$time_taken" ] && [ "$(printf "%s" "$time_taken" | awk '{print ($1 > 0)}')" -eq 1 ]; then
+            transfer_sec=$(awk -v bytes="$total_transferred" -v t="$time_taken" 'BEGIN { printf "%.2f", (bytes / t) / 1024 }')
+        fi
+    fi
+
     if [ -z "$transfer_sec" ]; then
         transfer_sec="0"
     fi
