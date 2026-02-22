@@ -1,7 +1,11 @@
 #!/bin/sh
 set -eu
 
-. /usr/local/bin/lib_ab_parse.sh
+LIB_AB_PARSE=${LIB_AB_PARSE:-/usr/local/bin/lib_ab_parse.sh}
+. "$LIB_AB_PARSE"
+
+AB_CMD=${AB_CMD:-ab}
+AB_MAX_RETRY=${AB_MAX_RETRY:-2}
 
 DURATION=${DURATION:-10}
 PER_ENDPOINT_DURATION=${PER_ENDPOINT_DURATION:-$DURATION}
@@ -220,8 +224,12 @@ run_ab() {
 first_endpoint=$(echo "$ENDPOINTS" | awk '{print $1}')
 first_path=$(endpoint_url "$first_endpoint")
 
-wait_for "xampp" "${URL_XAMPP%/}/$first_path"
-wait_for "nginx-multi" "${URL_NGINX_MULTI%/}/$first_path"
+if [ "${WAIT_FOR_SKIP:-0}" != "1" ]; then
+    wait_for "xampp" "${URL_XAMPP%/}/$first_path"
+    wait_for "nginx-multi" "${URL_NGINX_MULTI%/}/$first_path"
+else
+    echo "[INFO] WAIT_FOR_SKIP=1 -> skipping upstream readiness checks"
+fi
 
 # Create temp directory for parallel results
 TEMP_DIR="${OUT_DIR}/temp"
@@ -257,6 +265,76 @@ merge_endpoint_results() {
     rm -f "$temp_csv_xampp" "$temp_csv_nginx" "$temp_json_xampp" "$temp_json_nginx"
 }
 
+run_ab_for_server() {
+    server="$1"
+    endpoint="$2"
+    url="$3"
+    endpoint_duration="$4"
+    endpoint_connections="$5"
+    temp_csv="$6"
+    temp_json="$7"
+
+    log_file="${OUT_DIR}/${server}_${endpoint}.log"
+
+    attempt=1
+    while [ $attempt -le $AB_MAX_RETRY ]; do
+        ab_exit=0
+        start_ts=$(date +%s)
+        output=$($AB_CMD -l -t "$endpoint_duration" -n "$MAX_REQUESTS" -c "$endpoint_connections" -q "$url" 2>&1) || ab_exit=$?
+        end_ts=$(date +%s)
+        elapsed=$((end_ts - start_ts))
+
+        if [ "$attempt" -eq 1 ]; then
+            echo "$output" > "$log_file"
+        else
+            printf "\n--- retry %s ---\n" "$attempt" >> "$log_file"
+            echo "$output" >> "$log_file"
+        fi
+
+        if [ "$ab_exit" -ne 0 ]; then
+            warn_msg="[WARN] ab exited with code $ab_exit on ${server}/${endpoint}; continuing with parsed partial output."
+            echo "$warn_msg" >&2
+            echo "$warn_msg" >> "$log_file"
+        fi
+        if [ "$elapsed" -lt $((endpoint_duration * 9 / 10)) ]; then
+            warn_msg="[WARN] ${server}/${endpoint} finished in ${elapsed}s (<${endpoint_duration}s). See ${OUT_DIR}/${server}_${endpoint}.log"
+            echo "$warn_msg" >&2
+            echo "$warn_msg" >> "$log_file"
+        fi
+
+        effective_duration=$elapsed
+        if [ "$effective_duration" -le 0 ]; then
+            effective_duration="$endpoint_duration"
+        fi
+
+        parse_ab_output "$output" "$effective_duration" "$endpoint_connections"
+        requests_sec="$PARSED_REQUESTS_SEC"
+        latency_avg="$PARSED_LATENCY_AVG"
+        p50="$PARSED_P50"
+        p75="$PARSED_P75"
+        p90="$PARSED_P90"
+        p99="$PARSED_P99"
+        transfer_sec="$PARSED_TRANSFER_SEC"
+
+        # 若 ab 非零或 throughput 為 0，最多重試一次
+        numeric_reqs=$(printf "%.0f" "$requests_sec" 2>/dev/null || echo "0")
+        if { [ "$ab_exit" -ne 0 ] || [ "$numeric_reqs" = "0" ]; } && [ $attempt -lt $AB_MAX_RETRY ]; then
+            retry_msg="[WARN] retrying ${server}/${endpoint} (attempt $((attempt + 1))/${AB_MAX_RETRY}) after ab exit $ab_exit or zero throughput"
+            echo "$retry_msg" >&2
+            echo "$retry_msg" >> "$log_file"
+            sleep 1
+            attempt=$((attempt + 1))
+            continue
+        fi
+
+        timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        echo "${timestamp},${server},${endpoint},${requests_sec},${latency_avg},${p50},${p75},${p90},${p99},${transfer_sec}" > "$temp_csv"
+        printf "  {\"timestamp\":\"%s\",\"server\":\"%s\",\"endpoint\":\"%s\",\"requests_sec\":%s,\"latency_avg\":\"%s\",\"latency_p50\":\"%s\",\"latency_p75\":\"%s\",\"latency_p90\":\"%s\",\"latency_p99\":\"%s\",\"transfer_sec\":\"%s\"}" \
+            "$timestamp" "$server" "$endpoint" "$requests_sec" "$latency_avg" "$p50" "$p75" "$p90" "$p99" "$transfer_sec" > "$temp_json"
+        break
+    done
+}
+
 run_endpoint_pair() {
     endpoint="$1"
     endpoint_duration="$2"
@@ -271,64 +349,20 @@ run_endpoint_pair() {
     echo "  [$(date +'%H:%M:%S')] Starting XAMPP and NGINX-Multi in parallel..."
 
     (
-        name="XAMPP (apache)"
         server="xampp"
         url="${URL_XAMPP%/}/$path"
-
         echo "" >&2
-        echo "=== ${name} :: ${endpoint} ===" >&2
-
-        ab_exit=0
-        output=$(ab -l -t "$endpoint_duration" -n "$MAX_REQUESTS" -c "$endpoint_connections" -q "$url" 2>&1) || ab_exit=$?
-        echo "$output" >&2
-        if [ "$ab_exit" -ne 0 ]; then
-            echo "[WARN] ab exited with code $ab_exit on ${server}/${endpoint}; continuing with parsed partial output." >&2
-        fi
-
-        parse_ab_output "$output" "$endpoint_duration" "$endpoint_connections"
-        requests_sec="$PARSED_REQUESTS_SEC"
-        latency_avg="$PARSED_LATENCY_AVG"
-        p50="$PARSED_P50"
-        p75="$PARSED_P75"
-        p90="$PARSED_P90"
-        p99="$PARSED_P99"
-        transfer_sec="$PARSED_TRANSFER_SEC"
-
-        timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-        echo "${timestamp},${server},${endpoint},${requests_sec},${latency_avg},${p50},${p75},${p90},${p99},${transfer_sec}" > "$temp_csv_xampp"
-        printf "  {\"timestamp\":\"%s\",\"server\":\"%s\",\"endpoint\":\"%s\",\"requests_sec\":%s,\"latency_avg\":\"%s\",\"latency_p50\":\"%s\",\"latency_p75\":\"%s\",\"latency_p90\":\"%s\",\"latency_p99\":\"%s\",\"transfer_sec\":\"%s\"}" \
-            "$timestamp" "$server" "$endpoint" "$requests_sec" "$latency_avg" "$p50" "$p75" "$p90" "$p99" "$transfer_sec" > "$temp_json_xampp"
+        echo "=== XAMPP (apache) :: ${endpoint} ===" >&2
+        run_ab_for_server "$server" "$endpoint" "$url" "$endpoint_duration" "$endpoint_connections" "$temp_csv_xampp" "$temp_json_xampp"
     ) &
     XAMPP_PID=$!
 
     (
-        name="NGINX (multi-core, dynamic)"
         server="nginx_multi"
         url="${URL_NGINX_MULTI%/}/$path"
-
         echo "" >&2
-        echo "=== ${name} :: ${endpoint} ===" >&2
-
-        ab_exit=0
-        output=$(ab -l -t "$endpoint_duration" -n "$MAX_REQUESTS" -c "$endpoint_connections" -q "$url" 2>&1) || ab_exit=$?
-        echo "$output" >&2
-        if [ "$ab_exit" -ne 0 ]; then
-            echo "[WARN] ab exited with code $ab_exit on ${server}/${endpoint}; continuing with parsed partial output." >&2
-        fi
-
-        parse_ab_output "$output" "$endpoint_duration" "$endpoint_connections"
-        requests_sec="$PARSED_REQUESTS_SEC"
-        latency_avg="$PARSED_LATENCY_AVG"
-        p50="$PARSED_P50"
-        p75="$PARSED_P75"
-        p90="$PARSED_P90"
-        p99="$PARSED_P99"
-        transfer_sec="$PARSED_TRANSFER_SEC"
-
-        timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-        echo "${timestamp},${server},${endpoint},${requests_sec},${latency_avg},${p50},${p75},${p90},${p99},${transfer_sec}" > "$temp_csv_nginx"
-        printf "  {\"timestamp\":\"%s\",\"server\":\"%s\",\"endpoint\":\"%s\",\"requests_sec\":%s,\"latency_avg\":\"%s\",\"latency_p50\":\"%s\",\"latency_p75\":\"%s\",\"latency_p90\":\"%s\",\"latency_p99\":\"%s\",\"transfer_sec\":\"%s\"}" \
-            "$timestamp" "$server" "$endpoint" "$requests_sec" "$latency_avg" "$p50" "$p75" "$p90" "$p99" "$transfer_sec" > "$temp_json_nginx"
+        echo "=== NGINX (multi-core, dynamic) :: ${endpoint} ===" >&2
+        run_ab_for_server "$server" "$endpoint" "$url" "$endpoint_duration" "$endpoint_connections" "$temp_csv_nginx" "$temp_json_nginx"
     ) &
     NGINX_PID=$!
 
